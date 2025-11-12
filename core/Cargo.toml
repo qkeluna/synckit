@@ -49,6 +49,11 @@ name = "vector_clock_bench"
 harness = false
 path = "benches/vector_clock_bench.rs"
 
+[[bench]]
+name = "delta_bench"
+harness = false
+path = "benches/delta_bench.rs"
+
 [profile.release]
 opt-level = 3
 lto = true          # Link-time optimization
