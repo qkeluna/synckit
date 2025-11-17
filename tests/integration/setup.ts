@@ -5,7 +5,7 @@
  */
 
 import { beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
-import { setupTestServer, teardownTestServer, TestServer } from './helpers/test-server';
+import { setupTestServer, teardownTestServer, restartTestServer, TestServer } from './helpers/test-server';
 import { TestClient, cleanupTestClients } from './helpers/test-client';
 import { TEST_CONFIG } from './config';
 
@@ -206,6 +206,11 @@ export async function withConnectedClients<T>(
     return await testFn(clients);
   });
 }
+
+// Re-export helpers
+export { restartTestServer } from './helpers/test-server';
+export { sleep, waitFor } from './config';
+export * from './helpers/assertions';
 
 export default {
   setupTests,

@@ -210,3 +210,19 @@ export async function teardownTestServer(): Promise<void> {
   await stopTestServer();
   globalTestServer = null;
 }
+
+/**
+ * Restart test server (convenience function)
+ */
+export async function restartTestServer(options?: { graceful?: boolean }): Promise<void> {
+  if (!globalTestServer) {
+    throw new Error('Test server not initialized');
+  }
+  
+  if (options?.graceful) {
+    // Graceful restart: wait a bit for pending operations
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  await globalTestServer.restart();
+}
