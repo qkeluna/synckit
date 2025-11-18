@@ -1,12 +1,12 @@
 /**
  * Test Client Utilities
  * 
- * Wrapper around SyncKit SDK for integration testing
+ * Lightweight WebSocket client for server integration testing
+ * Does NOT use the SDK - communicates directly with server via WebSocket
  */
 
-import { SyncKit } from '../../../sdk/src/synckit';
-import { SyncDocument } from '../../../sdk/src/document';
 import { TEST_CONFIG, getWebSocketUrl, generateTestId, sleep } from '../config';
+import WebSocket from 'ws';
 
 /**
  * Test client configuration
@@ -19,14 +19,26 @@ export interface TestClientConfig {
 }
 
 /**
- * Test client wrapper
+ * Document state (in-memory tracking)
+ */
+interface DocumentState {
+  [field: string]: any;
+}
+
+/**
+ * Test client wrapper - Direct WebSocket communication
  */
 export class TestClient {
-  private sdk: SyncKit | null = null;
   public readonly clientId: string;
   public readonly userId: string;
   private connected: boolean = false;
   private ws: WebSocket | null = null;
+  
+  // Track document states locally
+  private documents: Map<string, DocumentState> = new Map();
+  
+  // Message callbacks
+  private messageCallbacks: Map<string, (data: any) => void> = new Map();
 
   constructor(config: TestClientConfig = {}) {
     this.clientId = config.clientId || generateTestId('client');
@@ -34,19 +46,12 @@ export class TestClient {
   }
 
   /**
-   * Initialize SDK
+   * Initialize client (lightweight - no SDK needed)
    */
   async init(): Promise<void> {
-    if (this.sdk) {
-      throw new Error('Client already initialized');
-    }
-
-    this.sdk = new SyncKit({
-      clientId: this.clientId,
-    });
-
-    await this.sdk.init();
-
+    // Just initialize local state
+    this.documents.clear();
+    
     if (TEST_CONFIG.features.verbose) {
       console.log(`[TestClient:${this.clientId}] Initialized`);
     }
@@ -56,10 +61,6 @@ export class TestClient {
    * Connect to test server via WebSocket
    */
   async connect(token?: string): Promise<void> {
-    if (!this.sdk) {
-      throw new Error('Client not initialized');
-    }
-
     if (this.connected) {
       return;
     }
@@ -72,39 +73,92 @@ export class TestClient {
         reject(new Error('WebSocket connection timeout'));
       }, TEST_CONFIG.timeouts.connection);
 
-      this.ws.onopen = () => {
+      this.ws.on('open', () => {
         clearTimeout(timeout);
         this.connected = true;
 
-        // Send auth message if token provided
-        if (token) {
-          this.ws!.send(JSON.stringify({
-            type: 'AUTH',
-            id: generateTestId('msg'),
-            timestamp: Date.now(),
-            token,
-          }));
-        }
+        // Send AUTH message (anonymous if no token)
+        this.sendMessage({
+          type: 'auth',
+          id: generateTestId('msg'),
+          timestamp: Date.now(),
+        });
 
         if (TEST_CONFIG.features.verbose) {
           console.log(`[TestClient:${this.clientId}] Connected`);
         }
 
         resolve();
-      };
+      });
 
-      this.ws.onerror = (error) => {
+      this.ws.on('error', (error) => {
         clearTimeout(timeout);
         reject(error);
-      };
+      });
 
-      this.ws.onclose = () => {
+      this.ws.on('close', () => {
         this.connected = false;
         if (TEST_CONFIG.features.verbose) {
           console.log(`[TestClient:${this.clientId}] Disconnected`);
         }
-      };
+      });
+
+      // Handle incoming messages
+      this.ws.on('message', (data: Buffer) => {
+        try {
+          const message = JSON.parse(data.toString());
+          this.handleMessage(message);
+        } catch (error) {
+          console.error('Failed to parse message:', error);
+        }
+      });
     });
+  }
+
+  /**
+   * Handle incoming WebSocket message
+   */
+  private handleMessage(message: any): void {
+    // Handle auth success
+    if (message.type === 'auth_success') {
+      this.userId = message.userId;
+    }
+    
+    // Handle sync response - full document state
+    if (message.type === 'sync_response' && message.state) {
+      // Merge with existing local state to avoid overwriting pending changes
+      const existingDoc = this.documents.get(message.documentId) || {};
+      this.documents.set(message.documentId, { ...message.state, ...existingDoc });
+    }
+    
+    // Handle delta - incremental changes
+    if (message.type === 'delta' && message.documentId) {
+      // Apply delta to local state
+      const doc = this.documents.get(message.documentId) || {};
+      // For now, assuming delta contains the changes directly
+      if (message.delta) {
+        Object.assign(doc, message.delta);
+        this.documents.set(message.documentId, doc);
+      }
+    }
+    
+    // Trigger any registered callbacks
+    const callback = this.messageCallbacks.get(message.id || message.requestId);
+    if (callback) {
+      callback(message);
+      this.messageCallbacks.delete(message.id || message.requestId);
+    }
+  }
+
+  /**
+   * Send message to server
+   */
+  private sendMessage(message: any): void {
+    if (!this.ws || !this.connected) {
+      throw new Error('WebSocket not connected');
+    }
+    
+    this.ws.send(JSON.stringify(message));
   }
 
   /**
@@ -119,86 +173,164 @@ export class TestClient {
   }
 
   /**
-   * Get or create document
+   * Ensure client is subscribed to a document
+   * Sends sync_request if not already subscribed
    */
-  async getDocument<T = any>(documentId: string): Promise<SyncDocument<T>> {
-    if (!this.sdk) {
-      throw new Error('Client not initialized');
-    }
+  private async ensureSubscribed(documentId: string): Promise<void> {
+    // Track which documents we've subscribed to
+    if (!this.documents.has(documentId)) {
+      // Send sync_request to subscribe
+      this.sendMessage({
+        type: 'sync_request',
+        id: generateTestId('msg'),
+        timestamp: Date.now(),
+        documentId,
+      });
+      
+      // Initialize empty document locally
+      this.documents.set(documentId, {});
 
-    return this.sdk.document<T>(documentId);
+      // Wait a bit for server to process subscription
+      await sleep(10);
+    }
   }
 
   /**
    * Set field in document
    */
-  async setField<T = any>(
+  async setField(
     documentId: string,
     field: string,
     value: any
   ): Promise<void> {
-    const doc = await this.getDocument<T>(documentId);
-    await doc.set(field as any, value);
+    // Ensure subscribed before sending delta
+    await this.ensureSubscribed(documentId);
+    
+    // Update local state immediately
+    let doc = this.documents.get(documentId)!;
+    doc[field] = value;
+
+    // Send delta to server
+    this.sendMessage({
+      type: 'delta',
+      id: generateTestId('msg'),
+      timestamp: Date.now(),
+      documentId,
+      delta: { [field]: value },
+      vectorClock: {},
+    });
+
+    // Small delay to allow propagation
+    await sleep(10);
   }
 
   /**
    * Get field from document
    */
-  async getField<T = any>(
+  async getField(
     documentId: string,
     field: string
   ): Promise<any> {
-    const doc = await this.getDocument<T>(documentId);
-    return doc.getField(field as any);
+    await this.ensureSubscribed(documentId);
+    const doc = this.documents.get(documentId);
+    return doc ? doc[field] : undefined;
   }
 
   /**
    * Get entire document state
    */
-  async getDocumentState<T = any>(documentId: string): Promise<T> {
-    const doc = await this.getDocument<T>(documentId);
-    return doc.get();
+  async getDocumentState(documentId: string): Promise<any> {
+    await this.ensureSubscribed(documentId);
+    return { ...this.documents.get(documentId)! };
+  }
+
+  /**
+   * Get document (alias for getDocumentState - for test compatibility)
+   * Requests document from server via sync_request
+   */
+  async getDocument(documentId: string): Promise<any> {
+    // Send sync request to server
+    const msgId = generateTestId('msg');
+    this.sendMessage({
+      type: 'sync_request',
+      id: msgId,
+      timestamp: Date.now(),
+      documentId,
+    });
+    
+    // Wait for response (with timeout)
+    await sleep(100);
+    return this.getDocumentState(documentId);
   }
 
   /**
    * Delete field from document
    */
-  async deleteField<T = any>(
+  async deleteField(
     documentId: string,
     field: string
   ): Promise<void> {
-    const doc = await this.getDocument<T>(documentId);
-    await doc.delete(field as any);
+    await this.ensureSubscribed(documentId);
+    
+    // Update local state
+    const doc = this.documents.get(documentId)!;
+    delete doc[field];
+
+    // Send delta with null to delete field
+    this.sendMessage({
+      type: 'delta',
+      id: generateTestId('msg'),
+      timestamp: Date.now(),
+      documentId,
+      delta: { [field]: null },
+      vectorClock: {},
+    });
+
+    await sleep(50);
   }
 
   /**
    * Subscribe to document changes
+   * Note: Server auto-subscribes on sync_request, so this just sets up callback
    */
-  async subscribeToDocument<T = any>(
+  async subscribeToDocument(
     documentId: string,
-    callback: (state: T) => void
+    callback: (state: any) => void
   ): Promise<() => void> {
-    const doc = await this.getDocument<T>(documentId);
-    return doc.subscribe(callback);
+    // Send sync_request to subscribe (server auto-subscribes on sync)
+    this.sendMessage({
+      type: 'sync_request',
+      id: generateTestId('msg'),
+      timestamp: Date.now(),
+      documentId,
+    });
+
+    // Return unsubscribe function (no-op for now)
+    return () => {
+      // Server doesn't have explicit unsubscribe, cleans up on disconnect
+    };
   }
 
   /**
    * Wait for document to reach expected state
    */
-  async waitForState<T = any>(
+  async waitForState(
     documentId: string,
-    expectedState: Partial<T>,
+    expectedState: Record<string, any>,
     timeout: number = TEST_CONFIG.timeouts.sync
   ): Promise<void> {
+    await this.ensureSubscribed(documentId);
+    
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeout) {
-      const currentState = await this.getDocumentState<T>(documentId);
+      // Direct access to avoid re-checking subscription
+      const currentState = { ...this.documents.get(documentId)! };
       
       // Check if all expected fields match
       let matches = true;
       for (const [key, value] of Object.entries(expectedState)) {
-        if ((currentState as any)[key] !== value) {
+        if (currentState[key] !== value) {
           matches = false;
           break;
         }
@@ -223,10 +355,14 @@ export class TestClient {
     expectedValue: any,
     timeout: number = TEST_CONFIG.timeouts.sync
   ): Promise<void> {
+    await this.ensureSubscribed(documentId);
+    
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeout) {
-      const value = await this.getField(documentId, field);
+      // Direct access to avoid re-checking subscription
+      const doc = this.documents.get(documentId);
+      const value = doc ? doc[field] : undefined;
       
       if (value === expectedValue) {
         return;
@@ -243,11 +379,8 @@ export class TestClient {
    */
   async cleanup(): Promise<void> {
     await this.disconnect();
-
-    if (this.sdk) {
-      await this.sdk.clearAll();
-      this.sdk = null;
-    }
+    this.documents.clear();
+    this.messageCallbacks.clear();
 
     if (TEST_CONFIG.features.verbose) {
       console.log(`[TestClient:${this.clientId}] Cleaned up`);

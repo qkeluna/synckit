@@ -103,7 +103,21 @@ export class TestServer {
     // Close HTTP server
     if (this.server) {
       await new Promise<void>((resolve) => {
-        this.server!.close(() => resolve());
+        // Set a timeout to force resolve if server doesn't close
+        const forceCloseTimeout = setTimeout(() => {
+          console.warn('[TestServer] Force closing server after timeout');
+          resolve();
+        }, 1000);
+
+        this.server!.close(() => {
+          clearTimeout(forceCloseTimeout);
+          resolve();
+        });
+
+        // Try to unref the server to prevent it from keeping process alive
+        if (typeof (this.server as any).unref === 'function') {
+          (this.server as any).unref();
+        }
       });
       this.server = null;
     }
@@ -114,6 +128,9 @@ export class TestServer {
     if (TEST_CONFIG.features.verbose) {
       console.log('[TestServer] Stopped');
     }
+    
+    // Small delay to ensure cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   /**
@@ -209,6 +226,14 @@ export async function setupTestServer(): Promise<TestServer> {
 export async function teardownTestServer(): Promise<void> {
   await stopTestServer();
   globalTestServer = null;
+
+  // Force cleanup of any remaining handles
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Force garbage collection if available (helps in tests)
+  if (global.gc) {
+    global.gc();
+  }
 }
 
 /**

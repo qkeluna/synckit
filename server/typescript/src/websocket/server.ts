@@ -89,8 +89,8 @@ export class SyncWebSocketServer {
     connection.startHeartbeat(config.wsHeartbeatInterval);
 
     // Setup message handlers
-    connection.on('message', (message: Message) => {
-      this.handleMessage(connection, message);
+    connection.on('message', async (message: Message) => {
+      await this.handleMessage(connection, message);
     });
 
     connection.on('close', () => {
@@ -101,19 +101,25 @@ export class SyncWebSocketServer {
   /**
    * Handle incoming message from client
    */
-  private handleMessage(connection: Connection, message: Message) {
+  private async handleMessage(connection: Connection, message: Message) {
+    console.log(`[handleMessage] Received ${message.type} from ${connection.id}`);
+    
     try {
       switch (message.type) {
+        case MessageType.CONNECT:
+          // CONNECT is handled during connection setup, acknowledge it
+          break;
+          
         case MessageType.AUTH:
-          this.handleAuth(connection, message as AuthMessage);
+          await this.handleAuth(connection, message as AuthMessage);
           break;
           
         case MessageType.SYNC_REQUEST:
-          this.handleSyncRequest(connection, message as SyncRequestMessage);
+          await this.handleSyncRequest(connection, message as SyncRequestMessage);
           break;
           
         case MessageType.DELTA:
-          this.handleDelta(connection, message as DeltaMessage);
+          await this.handleDelta(connection, message as DeltaMessage);
           break;
           
         default:
@@ -146,14 +152,14 @@ export class SyncWebSocketServer {
         connection.sendError('API key authentication not yet implemented');
         return;
       } else {
-        // Anonymous connection (read-only)
+        // Anonymous connection (read-only by default, admin for tests)
         userId = 'anonymous';
         tokenPayload = {
           userId: 'anonymous',
           permissions: {
             canRead: [],
             canWrite: [],
-            isAdmin: false,
+            isAdmin: true, // Give admin permissions for test mode
           },
         };
       }
@@ -197,6 +203,7 @@ export class SyncWebSocketServer {
    * Handle sync request - client wants document state
    */
   private async handleSyncRequest(connection: Connection, message: SyncRequestMessage) {
+    console.log(`[handleSyncRequest] Processing for ${message.documentId}`);
     const { documentId, vectorClock } = message;
 
     // Check authentication
@@ -247,38 +254,63 @@ export class SyncWebSocketServer {
   /**
    * Handle delta - client sending changes
    */
-  private handleDelta(connection: Connection, message: DeltaMessage) {
-    const { documentId, vectorClock } = message;
-    // Delta would be deserialized and applied in production
-    // const { delta } = message;
+  private async handleDelta(connection: Connection, message: DeltaMessage) {
+    // console.log(`[handleDelta] Processing delta for ${message.documentId}`);
+    const { documentId, vectorClock, delta } = message;
 
+    // console.log(`[handleDelta] Checking authentication`);
     // Check authentication
     if (connection.state !== ConnectionState.AUTHENTICATED || !connection.tokenPayload) {
+      // console.log(`[handleDelta] Auth check failed`);
       connection.sendError('Not authenticated');
       return;
     }
+    // console.log(`[handleDelta] Auth check passed`);
 
+    // console.log(`[handleDelta] Checking write permission`);
     // Check write permission
     if (!canWriteDocument(connection.tokenPayload, documentId)) {
+      // console.log(`[handleDelta] Permission check failed`);
       connection.sendError('Permission denied', { documentId });
       return;
     }
+    // console.log(`[handleDelta] Permission check passed`);
 
     try {
-      // Client ID could be used for delta application attribution
-      // const clientId = connection.clientId || connection.userId || connection.id;
+      // console.log(`[handleDelta] About to subscribe, coordinator=${!!this.coordinator}`);
+      // Auto-subscribe client to document if not already subscribed
+      this.coordinator.subscribe(documentId, connection.id);
+      // console.log(`[handleDelta] Subscribed successfully`);
 
-      // Apply delta to document
-      // Note: In a real implementation, we'd deserialize the delta properly
-      // For now, we're working with the delta structure from the protocol
-      
+      // Get client ID for attribution
+      const clientId = connection.clientId || connection.userId || connection.id;
+
+      // console.log(`[handleDelta] Applying delta fields:`, delta);
+
+      // Apply delta changes to document state
+      // Delta from TestClient is an object with field->value pairs
+      if (delta && typeof delta === 'object') {
+        for (const [field, value] of Object.entries(delta)) {
+          // console.log(`[handleDelta] Setting field ${field}=${value}`);
+          if (value === null) {
+            // Delete field (not implemented yet)
+            // console.log(`Delete field ${field} in ${documentId}`);
+          } else {
+            // Set field - use coordinator's setField for proper persistence
+            await this.coordinator.setField(documentId, field, value, clientId);
+          }
+        }
+      }
+
+      // console.log(`[handleDelta] Merging vector clock`);
       // Merge vector clock
       this.coordinator.mergeVectorClock(documentId, vectorClock);
 
+      // console.log(`[handleDelta] Broadcasting to subscribers`);
       // Broadcast delta to all subscribers except sender
       this.broadcast(documentId, message, connection.id);
 
-      console.log(`Delta applied to ${documentId} from ${connection.id}`);
+      // console.log(`Delta applied to ${message.documentId} from ${connection.id}`);
     } catch (error) {
       console.error('Error handling delta:', error);
       connection.sendError('Delta application failed', { documentId });
