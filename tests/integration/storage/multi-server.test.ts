@@ -438,5 +438,6 @@ describe('Storage - Multi-Server Coordination', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 25000); // 25s timeout for large multi-server document
 });
+

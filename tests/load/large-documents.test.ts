@@ -12,11 +12,11 @@ import { sleep } from '../integration/config';
 describe('Load - Large Documents', () => {
   beforeAll(async () => {
     await setupTestServer();
-  });
+  }, { timeout: 30000 });
 
   afterAll(async () => {
     await teardownTestServer();
-  });
+  }, { timeout: 30000 });
 
   it('should handle document with 1000 fields', async () => {
     const clients: TestClient[] = [];
@@ -61,7 +61,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle document with 5000 fields', async () => {
     const clients: TestClient[] = [];
@@ -116,12 +116,12 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 180000 });
 
   it('should handle document with 10000 fields', async () => {
     const clients: TestClient[] = [];
     const docId = 'large-10k-doc';
-    
+
     try {
       // Create 2 clients
       for (let i = 0; i < 2; i++) {
@@ -130,10 +130,10 @@ describe('Load - Large Documents', () => {
         await client.connect();
         clients.push(client);
       }
-      
+
       console.log('Creating document with 10000 fields...');
       const startTime = Date.now();
-      
+
       // Create 10000 fields in larger batches
       const batchSize = 200;
       for (let batch = 0; batch < 50; batch++) {
@@ -145,33 +145,33 @@ describe('Load - Large Documents', () => {
           );
         }
         await Promise.all(operations);
-        
+
         if ((batch + 1) % 10 === 0) {
           console.log(`  Created ${(batch + 1) * batchSize}/10000 fields`);
         }
-        
+
         await sleep(150); // Delay between batches
       }
-      
+
       const createTime = Date.now() - startTime;
       console.log(`Created 10000 fields in ${(createTime / 1000).toFixed(2)}s`);
-      
+
       // Wait for sync
       console.log('Waiting for sync...');
       await sleep(20000);
-      
+
       // Verify sync
       const state = await clients[1].getDocumentState(docId);
       const fieldCount = Object.keys(state).length;
-      
+
       console.log(`Client 2 received ${fieldCount}/10000 fields`);
       expect(fieldCount).toBeGreaterThan(9000); // 90% threshold
-      
+
       console.log('10K field document handled ✅');
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 300000 });
 
   it('should handle large field values', async () => {
     const clients: TestClient[] = [];
@@ -211,7 +211,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 120000 });
 
   it('should handle updates to large documents', async () => {
     const clients: TestClient[] = [];
@@ -257,7 +257,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 120000 });
 
   it('should handle deletes in large documents', async () => {
     const clients: TestClient[] = [];
@@ -302,7 +302,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 120000 });
 
   it('should handle multiple large documents', async () => {
     const clients: TestClient[] = [];
@@ -347,7 +347,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 180000 });
 
   it('should handle large document with concurrent updates', async () => {
     const clients: TestClient[] = [];
@@ -395,7 +395,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should measure performance with large documents', async () => {
     const clients: TestClient[] = [];
@@ -435,11 +435,11 @@ describe('Load - Large Documents', () => {
       console.log(`Synced ${fieldCount}/3000 fields in ${(syncTime / 1000).toFixed(2)}s`);
       
       expect(fieldCount).toBeGreaterThan(2700);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 180000 });
 
   it('should handle large document with mixed data types', async () => {
     const clients: TestClient[] = [];
@@ -504,7 +504,7 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle incremental growth to large document', async () => {
     const clients: TestClient[] = [];
@@ -553,5 +553,5 @@ describe('Load - Large Documents', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 60000 });
 });

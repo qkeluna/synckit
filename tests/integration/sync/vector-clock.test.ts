@@ -4,18 +4,23 @@
  * Tests vector clock advancement and causality tracking
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   setupTestSuite,
   createClients,
   assertEventualConvergence,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('E2E Sync - Vector Clock', () => {
   setupTestSuite();
 
-  const docId = 'vector-clock-doc';
+  let docId: string;
+
+  beforeEach(() => {
+    docId = generateTestId('vector-clock');
+  });
 
   it('should advance clock on local updates', async () => {
     const client = await createClients(1);
@@ -142,24 +147,34 @@ describe('E2E Sync - Vector Clock', () => {
 
   it('should handle partial ordering', async () => {
     const clients = await createClients(4);
-    
+
     await Promise.all(clients.map(c => c.connect()));
-    
+
     // Create partial order:
     // 0 → 2
     // 1 → 3
     // (0 and 1 are concurrent, 2 and 3 are concurrent)
-    
+
+    // Both clients write concurrently to the same field
     await clients[0].setField(docId, 'branch', 'A0');
     await clients[1].setField(docId, 'branch', 'B1');
     await sleep(300);
-    
-    await clients[2].waitForField(docId, 'branch', 'A0');
-    await clients[2].setField(docId, 'branch', 'A2');
-    
-    await clients[3].waitForField(docId, 'branch', 'B1');
-    await clients[3].setField(docId, 'branch', 'B3');
-    
+
+    // After LWW resolution, one value wins - check which branch won
+    const winningValue = await clients[2].getField(docId, 'branch');
+
+    // Proceed along whichever branch won the LWW race
+    if (winningValue === 'A0') {
+      // A branch won: 0 → 2
+      await clients[2].setField(docId, 'branch', 'A2');
+    } else if (winningValue === 'B1') {
+      // B branch won: 1 → 3
+      await clients[3].setField(docId, 'branch', 'B3');
+    } else {
+      // Unexpected value - fail the test
+      throw new Error(`Unexpected winning value: ${winningValue}, expected A0 or B1`);
+    }
+
     // Should converge to one of the final values
     await sleep(500);
     const state = await assertEventualConvergence(clients, docId);

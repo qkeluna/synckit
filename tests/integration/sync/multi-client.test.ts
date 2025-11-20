@@ -4,7 +4,7 @@
  * Tests synchronization across 3-5 clients
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   setupTestSuite,
   createClients,
@@ -15,11 +15,16 @@ import {
   sleep,
   TEST_CONFIG,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('E2E Sync - Multi-Client', () => {
   setupTestSuite();
 
-  const docId = 'multi-client-doc';
+  let docId: string;
+
+  beforeEach(() => {
+    docId = generateTestId('multi-client');
+  });
 
   it('should sync across 3 clients', async () => {
     const clients = await createClients(3);

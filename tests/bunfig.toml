@@ -1,0 +1,3 @@
+[test]
+# Global test timeout (120 seconds = 120000ms for chaos tests with extreme conditions)
+timeout = 120000

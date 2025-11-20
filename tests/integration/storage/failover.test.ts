@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { setupTestServer, teardownTestServer, restartTestServer } from '../helpers/test-server';
 import { TestClient } from '../helpers/test-client';
-import { sleep } from '../config';
+import { sleep, generateTestId } from '../config';
 
 describe('Storage - Failover', () => {
   beforeAll(async () => {
@@ -18,43 +18,40 @@ describe('Storage - Failover', () => {
     await teardownTestServer();
   });
 
-  const docId = 'failover-doc';
-
   it('should handle server crash during write', async () => {
+    const docId = generateTestId('failover');
     const clients: TestClient[] = [];
-    
+
     try {
       console.log('Testing server crash during write...');
-      
+
       const client = new TestClient();
       await client.init();
       await client.connect();
       clients.push(client);
-      
+
       // Start writing
       await client.setField(docId, 'beforeCrash', 'data');
       await sleep(200);
-      
+
       // Simulate crash (abrupt restart)
       console.log('Simulating server crash...');
-      await teardownTestServer();
-      await sleep(100);
-      await setupTestServer();
+      await restartTestServer();
       await sleep(2000);
-      
+
       // Client reconnects
       const client2 = new TestClient();
       await client2.init();
       await client2.connect();
       clients.push(client2);
-      
+
       // At least try to recover some data
       const state = await client2.getDocumentState(docId);
       console.log(`Recovered fields: ${Object.keys(state).length}`);
-      
+
       // System should not crash
       expect(true).toBe(true);
-      
+
       console.log('Server crash handled gracefully ✅');
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
@@ -62,7 +59,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should maintain availability during database issues', async () => {
-    const dbIssueDocId = 'db-issue-doc';
+    const dbIssueDocId = generateTestId('db-issue');
     const clients: TestClient[] = [];
     
     try {
@@ -90,7 +87,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should reconnect clients after failover', async () => {
-    const reconnectDocId = 'reconnect-failover-doc';
+    const reconnectDocId = generateTestId('reconnect-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -140,7 +137,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should handle Redis failover gracefully', async () => {
-    const redisFailoverDocId = 'redis-failover-doc';
+    const redisFailoverDocId = generateTestId('redis-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -172,7 +169,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should recover in-flight operations after failover', async () => {
-    const inflightDocId = 'inflight-failover-doc';
+    const inflightDocId = generateTestId('inflight-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -217,7 +214,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should handle cascading failures', async () => {
-    const cascadeDocId = 'cascade-failover-doc';
+    const cascadeDocId = generateTestId('cascade-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -253,10 +250,10 @@ describe('Storage - Failover', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 25000); // 25s timeout for 3 consecutive restarts
 
   it('should maintain data integrity during failover', async () => {
-    const integrityDocId = 'integrity-failover-doc';
+    const integrityDocId = generateTestId('integrity-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -300,7 +297,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should handle failover with active writes', async () => {
-    const activeWritesDocId = 'active-writes-failover-doc';
+    const activeWritesDocId = generateTestId('active-writes-failover');
     const clients: TestClient[] = [];
     
     try {
@@ -361,7 +358,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should handle gradual degradation', async () => {
-    const degradationDocId = 'degradation-doc';
+    const degradationDocId = generateTestId('degradation');
     const clients: TestClient[] = [];
     
     try {
@@ -394,7 +391,7 @@ describe('Storage - Failover', () => {
   });
 
   it('should recover from complete storage failure', async () => {
-    const storageFailureDocId = 'storage-failure-doc';
+    const storageFailureDocId = generateTestId('storage-failure');
     const clients: TestClient[] = [];
     
     try {

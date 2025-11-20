@@ -4,7 +4,7 @@
  * Tests synchronization of delete operations
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   setupTestSuite,
   createClients,
@@ -12,11 +12,16 @@ import {
   assertFieldNotExists,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('E2E Sync - Deletes', () => {
   setupTestSuite();
 
-  const docId = 'delete-test-doc';
+  let docId: string;
+
+  beforeEach(() => {
+    docId = generateTestId('deletes');
+  });
 
   it('should sync simple delete', async () => {
     const [clientA, clientB] = await createClients(2);

@@ -12,18 +12,21 @@ import {
   assertFieldSynced,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Basic Transitions', () => {
   setupTestSuite();
 
-  const docId = 'offline-doc';
+  // Generate unique document ID for each test to avoid pollution
+  const getDocId = () => generateTestId('offline-doc');
 
   it('should work offline and sync on reconnect', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Initial sync
     await clientA.setField(docId, 'initial', 'value');
     await clientB.waitForField(docId, 'initial', 'value');
@@ -46,6 +49,7 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should receive updates made while offline', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -73,6 +77,7 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle multiple offline/online cycles', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -96,6 +101,7 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle rapid disconnect/reconnect', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -118,8 +124,9 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should preserve offline changes during network issues', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
-    
+
     // Work offline from the start
     await client[0].setField(docId, 'offlineFirst', 'data');
     await client[0].setField(docId, 'count', 123);
@@ -136,11 +143,12 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle offline deletes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Create initial data
     await clientA.setField(docId, 'toDelete', 'value');
     await clientB.waitForField(docId, 'toDelete', 'value');
@@ -159,16 +167,17 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle large offline changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     await sleep(200);
-    
+
     // Client B goes offline
     await clientB.disconnect();
-    
+
     // Make many offline changes
     for (let i = 0; i < 20; i++) {
       await clientB.setField(docId, `field${i}`, i);
@@ -185,11 +194,12 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle offline updates to existing fields', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Create initial state
     await clientA.setField(docId, 'updateMe', 'original');
     await clientB.waitForField(docId, 'updateMe', 'original');
@@ -206,17 +216,18 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should sync bidirectionally after offline period', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     await sleep(200);
-    
+
     // Both clients go offline
     await clientA.disconnect();
     await clientB.disconnect();
-    
+
     // Both make offline changes
     await clientA.setField(docId, 'fromA', 'valueA');
     await clientB.setField(docId, 'fromB', 'valueB');
@@ -233,8 +244,9 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle offline work with no initial connection', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
-    
+
     // Work offline without ever connecting
     await client[0].setField(docId, 'neverConnected', 'true');
     await client[0].setField(docId, 'data', 'offline');
@@ -254,10 +266,11 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle alternating online/offline work', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
-    
+
     // Online work
     await clientA.setField(docId, 'step1', 'online');
     
@@ -282,11 +295,12 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should preserve data across reconnections', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Set initial data
     await clientA.setField(docId, 'persistent', 'data');
     await clientB.waitForField(docId, 'persistent', 'data');
@@ -304,12 +318,13 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle one client staying offline', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
-    
+
     await clientA.connect();
     await clientB.connect();
     await clientC.connect();
-    
+
     // Initial sync
     await clientA.setField(docId, 'initial', 'value');
     await sleep(300);
@@ -326,8 +341,9 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle graceful degradation with storage unavailable', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
-    
+
     // Work without connecting (no storage)
     await client[0].setField(docId, 'local', 'only');
     
@@ -337,11 +353,12 @@ describe('Offline/Online - Basic Transitions', () => {
   });
 
   it('should handle offline updates during server maintenance', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Both synced
     await clientA.setField(docId, 'before', 'maintenance');
     await sleep(300);

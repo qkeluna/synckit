@@ -1,6 +1,6 @@
 /**
  * Test Server Harness
- * 
+ *
  * Manages SyncKit server lifecycle for integration tests
  */
 
@@ -9,6 +9,8 @@ import { serve, Server } from '@hono/node-server';
 import { SyncWebSocketServer } from '../../../server/typescript/src/websocket/server';
 import { auth } from '../../../server/typescript/src/routes/auth';
 import { TEST_CONFIG, getServerUrl } from '../config';
+import { MemoryStorageAdapter, clearMemoryStorage } from './memory-storage';
+import type { StorageAdapter } from '../../../server/typescript/src/storage/interface';
 
 /**
  * Test server instance
@@ -17,6 +19,7 @@ export class TestServer {
   private app: Hono | null = null;
   private server: Server | null = null;
   private wsServer: SyncWebSocketServer | null = null;
+  private storage: StorageAdapter | null = null;
   private isRunning: boolean = false;
 
   /**
@@ -63,11 +66,19 @@ export class TestServer {
       hostname: TEST_CONFIG.server.host,
     });
 
-    // Initialize WebSocket server
+    // Initialize and connect storage (reuse existing instance if available)
+    if (!this.storage) {
+      this.storage = new MemoryStorageAdapter();
+    }
+    if (!this.storage.isConnected()) {
+      await this.storage.connect();
+    }
+
+    // Initialize WebSocket server with persistent storage
     this.wsServer = new SyncWebSocketServer(
       this.server as any,
       {
-        storage: undefined, // No storage in tests by default
+        storage: this.storage, // Use in-memory storage for persistence across restarts
         pubsub: undefined, // No Redis in tests by default
       }
     );
@@ -98,18 +109,32 @@ export class TestServer {
     if (this.wsServer) {
       await this.wsServer.close();
       this.wsServer = null;
+      // Wait for WebSocket connections to fully close
+      await new Promise(resolve => setTimeout(resolve, 100)); // Increased for Windows port release
     }
+
+    // Disconnect storage (but don't set to null - keep data for restart)
+    // Note: We don't disconnect to preserve data across restarts
+    // The storage will be reused when server restarts
 
     // Close HTTP server
     if (this.server) {
+      // Force close all connections immediately (Node.js 18.2+)
+      if (typeof (this.server as any).closeAllConnections === 'function') {
+        (this.server as any).closeAllConnections();
+      }
+
+      // Small delay to let connections fully close
+      await new Promise(resolve => setTimeout(resolve, 100)); // Increased for Windows port release
+
       await new Promise<void>((resolve) => {
         // Set a timeout to force resolve if server doesn't close
         const forceCloseTimeout = setTimeout(() => {
           console.warn('[TestServer] Force closing server after timeout');
           resolve();
-        }, 1000);
+        }, 1000); // Reduced to 1000ms since connections should already be closed
 
-        this.server!.close(() => {
+        if (!this.server) { clearTimeout(forceCloseTimeout); resolve(); return; } this.server.close(() => {
           clearTimeout(forceCloseTimeout);
           resolve();
         });
@@ -138,6 +163,12 @@ export class TestServer {
    */
   async restart(): Promise<void> {
     await this.stop();
+
+    // Add delay to ensure port is fully released
+    // This is critical for Windows/Node.js port binding
+    // Increased to 500ms to account for connection cleanup
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     await this.start();
   }
 
@@ -156,7 +187,7 @@ export class TestServer {
       } catch (error) {
         // Server not ready yet
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 100)); // Increased for Windows port release
     }
     
     throw new Error(`Server failed to start within ${timeout}ms`);
@@ -167,6 +198,13 @@ export class TestServer {
    */
   getStats(): any {
     return this.wsServer?.getStats();
+  }
+
+  /**
+   * Clear coordinator's in-memory cache (for test cleanup)
+   */
+  clearCoordinatorCache(): void {
+    this.wsServer?.clearCoordinatorCache();
   }
 
   /**
@@ -225,10 +263,14 @@ export async function setupTestServer(): Promise<TestServer> {
  */
 export async function teardownTestServer(): Promise<void> {
   await stopTestServer();
+
+  // Clear memory storage between test suites
+  clearMemoryStorage();
+
   globalTestServer = null;
 
   // Force cleanup of any remaining handles
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 500)); // Increased for Windows port release
 
   // Force garbage collection if available (helps in tests)
   if (global.gc) {

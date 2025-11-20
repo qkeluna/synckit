@@ -39,12 +39,12 @@ export const TEST_CONFIG = {
     maxConnections: 100, // Lower limit for tests
   },
 
-  // Test timeouts
+  // Test timeouts (increased for complex scenarios)
   timeouts: {
-    connection: 5000, // 5s to establish connection
-    sync: 3000, // 3s for sync operations
-    convergence: 10000, // 10s for convergence in chaos tests
-    cleanup: 2000, // 2s for cleanup
+    connection: 10000, // 10s to establish connection (was 5s)
+    sync: 6000, // 6s for sync operations (was 3s)
+    convergence: 20000, // 20s for convergence in chaos tests (was 10s)
+    cleanup: 5000, // 5s for cleanup (was 2s)
   },
 
   // Test data

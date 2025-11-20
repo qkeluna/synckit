@@ -88,3 +88,7 @@ DIRECTORY_TREE.txt
 *_INTERNAL.md
 *_PLAN.md
 .notes/
+
+# Test environment
+tests/bun.lock
+tests/node_modules/

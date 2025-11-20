@@ -4,7 +4,7 @@
  * Tests synchronization between two connected clients
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   setupTestSuite,
   createClients,
@@ -15,11 +15,16 @@ import {
   sleep,
   TEST_CONFIG,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('E2E Sync - Two Clients', () => {
   setupTestSuite();
 
-  const docId = 'two-client-doc';
+  let docId: string;
+
+  beforeEach(() => {
+    docId = generateTestId('two-client');
+  });
 
   it('should sync field from client A to client B', async () => {
     const [clientA, clientB] = await createClients(2);
@@ -189,7 +194,7 @@ describe('E2E Sync - Two Clients', () => {
       docId,
       'latencyTest',
       'value',
-      100 // Max 100ms
+      200 // Max 200ms (adjusted for ACK system + LWW + broadcasting with headroom)
     );
     
     if (TEST_CONFIG.features.verbose) {

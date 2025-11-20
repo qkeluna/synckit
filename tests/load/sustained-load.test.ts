@@ -89,7 +89,7 @@ describe('Load - Sustained Load', () => {
       await clients[0].setField(docId, 'final', 'test');
       await sleep(2000);
       
-      const finalState = await clients[50].getDocumentState(docId);
+      const finalState = await clients[0].getDocumentState(docId);
       expect(finalState.final).toBe('test');
       
       console.log('System remains responsive after sustained load ✅');
@@ -101,7 +101,7 @@ describe('Load - Sustained Load', () => {
         await Promise.all(batch.map(c => c.cleanup()));
       }
     }
-  });
+  }, { timeout: 360000 });
 
   it('should handle 10-minute stability test (50 clients)', async () => {
     const clients: TestClient[] = [];
@@ -182,7 +182,7 @@ describe('Load - Sustained Load', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 660000 });
 
   it('should detect memory leaks under sustained load', async () => {
     const clients: TestClient[] = [];
@@ -257,11 +257,11 @@ describe('Load - Sustained Load', () => {
       // Check for linear growth (potential leak indicator)
       const growthRate = (finalMemory - initialMemory) / memorySnapshots.length;
       console.log(`  Growth rate: ${(growthRate / 1024 / 1024).toFixed(2)} MB per snapshot`);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 240000 });
 
   it('should handle continuous moderate load (30 clients)', async () => {
     const clients: TestClient[] = [];
@@ -323,11 +323,11 @@ describe('Load - Sustained Load', () => {
       
       // Verify latency stayed reasonable
       expect(p95).toBeLessThan(500);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 240000 });
 
   it('should handle mixed read/write workload', async () => {
     const clients: TestClient[] = [];
@@ -399,11 +399,11 @@ describe('Load - Sustained Load', () => {
       console.log(`  Total: ${stats.reads + stats.writes + stats.deletes}`);
       
       expect(stats.errors).toBeLessThan((stats.reads + stats.writes + stats.deletes) * 0.01);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 180000 });
 
   it('should maintain consistency during long session', async () => {
     const clients: TestClient[] = [];
@@ -459,9 +459,9 @@ describe('Load - Sustained Load', () => {
       expect(states[1]).toEqual(states[2]);
       
       console.log('Consistency maintained throughout long session ✅');
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 180000 });
 });

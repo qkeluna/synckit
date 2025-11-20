@@ -18,18 +18,20 @@ describe('Storage - Persistence', () => {
     await teardownTestServer();
   });
 
-  const docId = 'persistent-doc';
+  // Generate unique doc ID for each test to avoid interference
+  const generateDocId = () => `persistent-doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   it('should persist document to PostgreSQL', async () => {
     const clients: TestClient[] = [];
-    
+    const docId = generateDocId();
+
     try {
       // Create client and make changes
       const client = new TestClient();
       await client.init();
       await client.connect();
       clients.push(client);
-      
+
       console.log('Creating document with fields...');
       await client.setField(docId, 'name', 'Alice');
       await client.setField(docId, 'age', 30);
@@ -52,13 +54,14 @@ describe('Storage - Persistence', () => {
 
   it('should persist vector clock with document', async () => {
     const clients: TestClient[] = [];
-    
+    const docId = generateDocId();
+
     try {
       const client = new TestClient();
       await client.init();
       await client.connect();
       clients.push(client);
-      
+
       console.log('Making multiple changes to advance vector clock...');
       for (let i = 0; i < 5; i++) {
         await client.setField(docId, `field${i}`, i);
@@ -77,6 +80,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should persist field-level metadata', async () => {
+    const docId = generateDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -107,6 +111,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should persist deletes (tombstones)', async () => {
+    const docId = generateDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -141,6 +146,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should persist large documents', async () => {
+    const docId = generateDocId();
     const largeDocId = 'large-persistent-doc';
     const clients: TestClient[] = [];
     
@@ -175,9 +181,10 @@ describe('Storage - Persistence', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20 second timeout for large document
 
   it('should persist concurrent writes from multiple clients', async () => {
+    const docId = generateDocId();
     const concurrentDocId = 'concurrent-persistent-doc';
     const clients: TestClient[] = [];
     
@@ -215,6 +222,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should persist updates to existing fields', async () => {
+    const docId = generateDocId();
     const updateDocId = 'update-persistent-doc';
     const clients: TestClient[] = [];
     
@@ -252,6 +260,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should persist different data types', async () => {
+    const docId = generateDocId();
     const typesDocId = 'types-persistent-doc';
     const clients: TestClient[] = [];
     
@@ -289,6 +298,7 @@ describe('Storage - Persistence', () => {
   });
 
   it('should handle rapid persistence operations', async () => {
+    const docId = generateDocId();
     const rapidDocId = 'rapid-persistent-doc';
     const clients: TestClient[] = [];
     
@@ -318,9 +328,10 @@ describe('Storage - Persistence', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 15000); // 15 second timeout for rapid operations
 
   it('should persist document across reconnection', async () => {
+    const docId = generateDocId();
     const reconnectDocId = 'reconnect-persistent-doc';
     const clients: TestClient[] = [];
     

@@ -12,92 +12,98 @@ import {
   assertFieldSynced,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Delayed Sync', () => {
   setupTestSuite();
 
-  const docId = 'delayed-sync-doc';
+  // Generate unique document ID for each test to avoid pollution
+  const getDocId = () => generateTestId('delayed-doc');
 
   it('should sync after 5 second offline period', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Initial sync
     await clientA.setField(docId, 'initial', 'value');
     await sleep(300);
-    
+
     // Client B goes offline
     await clientB.disconnect();
-    
+
     // Wait 5 seconds while making changes
     await clientA.setField(docId, 'delayed', 'value');
     await sleep(5000);
-    
+
     // Client B reconnects
     await clientB.connect();
-    
+
     // Should sync despite delay
     await clientB.waitForField(docId, 'delayed', 'value');
     await assertEventualConvergence([clientA, clientB], docId);
-  });
+  }, { timeout: 35000 }); // 5s sleep + buffer
 
   it('should sync after 30 second offline period', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     // Baseline
     await clientA.setField(docId, 'before_delay', 'value');
     await sleep(300);
-    
+
     // Client B goes offline for extended period
     await clientB.disconnect();
-    
+
     // Client A makes changes
     await clientA.setField(docId, 'during_delay', 'data');
-    
+
     // Simulate 30 second delay
     await sleep(30000);
-    
+
     // Client B reconnects
     await clientB.connect();
-    
+
     // Should sync successfully
     await clientB.waitForField(docId, 'during_delay', 'data');
     await assertEventualConvergence([clientA, clientB], docId);
-  });
+  }, { timeout: 60000 });
 
   it('should handle multiple changes during delay', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
     await sleep(200);
-    
+
     // Client B goes offline
     await clientB.disconnect();
-    
+
     // Client A makes many changes over time
     for (let i = 0; i < 10; i++) {
       await clientA.setField(docId, `change${i}`, i);
       await sleep(500); // Space out changes
     }
-    
+
     // Client B reconnects after all changes
     await clientB.connect();
-    
+
     // All changes should sync
     await sleep(1000);
     const state = await assertEventualConvergence([clientA, clientB], docId);
-    
+
     expect(Object.keys(state).length).toBe(10);
-  });
+  }, { timeout: 35000 }); // 5s+ of sleeps + buffer
 
   it('should handle bidirectional delayed sync', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -128,9 +134,10 @@ describe('Offline/Online - Delayed Sync', () => {
     
     expect(state).toHaveProperty('fromA', 'valueA');
     expect(state).toHaveProperty('fromB', 'valueB');
-  });
+  }, { timeout: 15000 }); // 3s sleep + buffer
 
   it('should handle delayed sync with large document', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -157,9 +164,10 @@ describe('Offline/Online - Delayed Sync', () => {
     const state = await assertEventualConvergence([clientA, clientB], docId);
     
     expect(Object.keys(state).length).toBe(100);
-  });
+  }, { timeout: 30000 }); // Large doc creation + sync time
 
   it('should handle delayed sync with deletes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -191,9 +199,10 @@ describe('Offline/Online - Delayed Sync', () => {
     expect(state).not.toHaveProperty('field1');
     expect(state).not.toHaveProperty('field2');
     expect(state).toHaveProperty('field3', 'value3');
-  });
+  }, { timeout: 15000 }); // 4.2s of sleeps + buffer
 
   it('should handle delayed sync with updates to existing fields', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -218,9 +227,10 @@ describe('Offline/Online - Delayed Sync', () => {
     // Should have latest value
     await clientB.waitForField(docId, 'counter', 10);
     await assertEventualConvergence([clientA, clientB], docId);
-  });
+  }, { timeout: 15000 }); // 4.2s of sleeps + buffer
 
   it('should handle staggered reconnections', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -258,9 +268,10 @@ describe('Offline/Online - Delayed Sync', () => {
     expect(state).toHaveProperty('fromA', 'valueA');
     expect(state).toHaveProperty('fromB', 'valueB');
     expect(state).toHaveProperty('fromC', 'valueC');
-  });
+  }, { timeout: 15000 }); // 7.3s of sleeps + buffer
 
   it('should handle delayed sync after server restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -288,9 +299,10 @@ describe('Offline/Online - Delayed Sync', () => {
     // Should sync
     await clientB.waitForField(docId, 'after', 'restart');
     await assertEventualConvergence([clientA, clientB], docId);
-  });
+  }, { timeout: 15000 }); // 5.3s of sleeps + buffer
 
   it('should handle offline work followed by delayed reconnect', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -317,9 +329,10 @@ describe('Offline/Online - Delayed Sync', () => {
     const state = await assertEventualConvergence([clientA, clientB], docId);
     
     expect(Object.keys(state).length).toBe(5);
-  });
+  }, { timeout: 12000 }); // 5s of sleeps + buffer
 
   it('should handle mixed online and offline changes with delay', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -357,9 +370,10 @@ describe('Offline/Online - Delayed Sync', () => {
       step3: 'offline',
       step4: 'onlineAgain',
     });
-  });
+  }, { timeout: 12000 }); // 4.1s of sleeps + buffer
 
   it('should handle delayed sync with conflict resolution', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -393,9 +407,10 @@ describe('Offline/Online - Delayed Sync', () => {
     
     // One value should win
     expect(['fromA', 'fromB']).toContain(state.conflict);
-  });
+  }, { timeout: 15000 }); // 5.9s of sleeps + buffer
 
   it('should handle incremental sync after long delay', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -428,9 +443,10 @@ describe('Offline/Online - Delayed Sync', () => {
       batch2: 'value2',
       batch3: 'value3',
     });
-  });
+  }, { timeout: 15000 }); // 7s of sleeps + buffer
 
   it('should handle delayed sync with empty changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -451,9 +467,10 @@ describe('Offline/Online - Delayed Sync', () => {
     
     // Should still be in sync
     await assertFieldSynced([clientA, clientB], docId, 'data', 'value');
-  });
+  }, { timeout: 12000 }); // 5.3s of sleeps + buffer
 
   it('should handle delayed sync with rapid changes before reconnect', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -480,9 +497,10 @@ describe('Offline/Online - Delayed Sync', () => {
     const state = await assertEventualConvergence([clientA, clientB], docId);
     
     expect(Object.keys(state).length).toBe(20);
-  });
+  }, { timeout: 12000 }); // 5.2s of sleeps + buffer
 
   it('should maintain data integrity across delay', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -511,5 +529,5 @@ describe('Offline/Online - Delayed Sync', () => {
     // Data should be identical
     const afterDelay = await clientB.getDocumentState(docId);
     expect(afterDelay).toEqual(baseline);
-  });
+  }, { timeout: 15000 }); // 6s of sleeps + buffer
 });

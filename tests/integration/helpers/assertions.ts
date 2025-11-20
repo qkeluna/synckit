@@ -9,6 +9,41 @@ import { TestClient } from './test-client';
 import { sleep, waitFor, TEST_CONFIG } from '../config';
 
 /**
+ * Deep equality comparison that ignores property order
+ * Handles objects, arrays, primitives, null, undefined
+ */
+function deepEqual(a: any, b: any): boolean {
+  // Handle primitives, null, undefined
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+
+  // Handle arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  // Handle objects
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  const keysA = Object.keys(a).sort();
+  const keysB = Object.keys(b).sort();
+
+  if (keysA.length !== keysB.length) return false;
+  if (!deepEqual(keysA, keysB)) return false;
+
+  for (const key of keysA) {
+    if (!deepEqual(a[key], b[key])) return false;
+  }
+
+  return true;
+}
+
+/**
  * Assert that all clients have converged to the same state
  */
 export async function assertConvergence<T = any>(
@@ -29,9 +64,9 @@ export async function assertConvergence<T = any>(
       clients.map(client => client.getDocumentState<T>(documentId))
     );
 
-    // Check if all states are identical
-    const firstState = JSON.stringify(states[0]);
-    const allMatch = states.every(state => JSON.stringify(state) === firstState);
+    // Check if all states are identical (using deep equality that ignores property order)
+    const firstState = states[0];
+    const allMatch = states.every(state => deepEqual(state, firstState));
 
     if (allMatch) {
       if (TEST_CONFIG.features.verbose) {

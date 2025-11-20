@@ -2,16 +2,17 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { Connection, ConnectionState } from './connection';
 import { ConnectionRegistry } from './registry';
-import { 
-  Message, 
-  MessageType, 
-  createMessageId, 
-  AuthMessage, 
-  AuthSuccessMessage, 
+import {
+  Message,
+  MessageType,
+  createMessageId,
+  AuthMessage,
+  AuthSuccessMessage,
   AuthErrorMessage,
   SyncRequestMessage,
   SyncResponseMessage,
-  DeltaMessage 
+  DeltaMessage,
+  AckMessage
 } from './protocol';
 import { config } from '../config';
 import { verifyToken } from '../auth/jwt';
@@ -19,8 +20,21 @@ import { canReadDocument, canWriteDocument } from '../auth/rbac';
 import { SyncCoordinator } from '../sync/coordinator';
 
 /**
+ * Pending ACK Info - tracks unacknowledged deltas
+ */
+interface PendingAckInfo {
+  messageId: string;
+  documentId: string;
+  message: DeltaMessage;
+  targetConnectionId: string;
+  attempts: number;
+  timeout: NodeJS.Timeout;
+  sentAt: number;
+}
+
+/**
  * WebSocket Server
- * 
+ *
  * Integrates WebSocket support with Hono HTTP server
  * Implements Phase 4 deferred features + Sync logic:
  * - Wire protocol (message format)
@@ -28,12 +42,22 @@ import { SyncCoordinator } from '../sync/coordinator';
  * - Connection state management
  * - Reconnection support
  * - Sync coordination with Rust WASM core
+ * - ACK-based reliable delivery with retries
  */
 export class SyncWebSocketServer {
   private wss: WebSocketServer;
   private registry: ConnectionRegistry;
   private coordinator: SyncCoordinator;
   private connectionCounter = 0;
+
+  // ACK tracking for reliable delivery
+  private pendingAcks: Map<string, PendingAckInfo> = new Map();
+  private readonly ACK_TIMEOUT = 3000; // 3 seconds
+  private readonly MAX_RETRIES = 3;
+
+  // Delta batching to reduce message volume
+  private pendingBatches: Map<string, { delta: Record<string, any>, timer: NodeJS.Timeout }> = new Map();
+  private readonly BATCH_INTERVAL = 50; // 50ms batching window
 
   constructor(
     server: Server,
@@ -109,19 +133,23 @@ export class SyncWebSocketServer {
         case MessageType.CONNECT:
           // CONNECT is handled during connection setup, acknowledge it
           break;
-          
+
         case MessageType.AUTH:
           await this.handleAuth(connection, message as AuthMessage);
           break;
-          
+
         case MessageType.SYNC_REQUEST:
           await this.handleSyncRequest(connection, message as SyncRequestMessage);
           break;
-          
+
         case MessageType.DELTA:
           await this.handleDelta(connection, message as DeltaMessage);
           break;
-          
+
+        case MessageType.ACK:
+          this.handleAck(connection, message as AckMessage);
+          break;
+
         default:
           console.warn(`Unknown message type: ${message.type}`);
       }
@@ -219,8 +247,12 @@ export class SyncWebSocketServer {
     }
 
     try {
+      // Ensure document is loaded from storage (if available)
+      await this.coordinator.getDocument(documentId);
+
       // Subscribe connection to document updates
       this.coordinator.subscribe(documentId, connection.id);
+      connection.addSubscription(documentId);
 
       // Merge client's vector clock if provided
       if (vectorClock) {
@@ -278,37 +310,52 @@ export class SyncWebSocketServer {
 
     try {
       // console.log(`[handleDelta] About to subscribe, coordinator=${!!this.coordinator}`);
+      // Ensure document is loaded from storage (critical after server restart)
+      await this.coordinator.getDocument(documentId);
+
       // Auto-subscribe client to document if not already subscribed
       this.coordinator.subscribe(documentId, connection.id);
+      connection.addSubscription(documentId);
       // console.log(`[handleDelta] Subscribed successfully`);
 
       // Get client ID for attribution
-      const clientId = connection.clientId || connection.userId || connection.id;
+      // Use connection.id to ensure each connection has its own vector clock entry
+      // (In production, connection.clientId should be set to a stable client identifier)
+      const clientId = connection.clientId || connection.id;
 
       // console.log(`[handleDelta] Applying delta fields:`, delta);
 
       // Apply delta changes to document state
       // Delta from TestClient is an object with field->value pairs
+      const authoritativeDelta: Record<string, any> = {};
+
       if (delta && typeof delta === 'object') {
         for (const [field, value] of Object.entries(delta)) {
           // console.log(`[handleDelta] Setting field ${field}=${value}`);
-          if (value === null) {
-            // Delete field (not implemented yet)
-            // console.log(`Delete field ${field} in ${documentId}`);
+          // Check for tombstone marker (delete operation)
+          const isTombstone = value !== null && typeof value === 'object' &&
+                             '__deleted' in value && value.__deleted === true;
+
+          if (isTombstone) {
+            // Delete field - returns null if delete wins, or existing value if concurrent write wins
+            const authoritativeValue = await this.coordinator.deleteField(documentId, field, clientId, message.timestamp);
+            // Send tombstone marker if delete won, otherwise send the value that won
+            authoritativeDelta[field] = authoritativeValue === null ? { __deleted: true } : authoritativeValue;
           } else {
-            // Set field - use coordinator's setField for proper persistence
-            await this.coordinator.setField(documentId, field, value, clientId);
+            // Set field - returns authoritative value after LWW conflict resolution
+            // This now supports null as a valid value!
+            const authoritativeValue = await this.coordinator.setField(documentId, field, value, clientId, message.timestamp);
+            authoritativeDelta[field] = authoritativeValue;
           }
         }
       }
 
-      // console.log(`[handleDelta] Merging vector clock`);
       // Merge vector clock
       this.coordinator.mergeVectorClock(documentId, vectorClock);
 
-      // console.log(`[handleDelta] Broadcasting to subscribers`);
-      // Broadcast delta to all subscribers except sender
-      this.broadcast(documentId, message, connection.id);
+      // Add to batch instead of immediate broadcast
+      // This coalesces rapid updates into fewer messages, reducing ACK overhead
+      this.addToBatch(documentId, authoritativeDelta, message);
 
       // console.log(`Delta applied to ${message.documentId} from ${connection.id}`);
     } catch (error) {
@@ -318,11 +365,88 @@ export class SyncWebSocketServer {
   }
 
   /**
-   * Broadcast message to all subscribers of a document
+   * Handle ACK - client acknowledging delta receipt
+   */
+  private handleAck(connection: Connection, message: AckMessage) {
+    const { messageId } = message;
+
+    // Construct the same ackKey used when storing (connection.id + message.id)
+    const ackKey = `${connection.id}-${messageId}`;
+
+    // Check if we're tracking this message
+    const pendingAck = this.pendingAcks.get(ackKey);
+    if (!pendingAck) {
+      // Already acknowledged or unknown message
+      return;
+    }
+
+    // Verify ACK is from the correct client
+    if (pendingAck.targetConnectionId !== connection.id) {
+      console.warn(`ACK from wrong client: expected ${pendingAck.targetConnectionId}, got ${connection.id}`);
+      return;
+    }
+
+    // Clear timeout and remove from pending
+    clearTimeout(pendingAck.timeout);
+    this.pendingAcks.delete(ackKey);
+
+    console.log(`ACK received for message ${messageId} (${Date.now() - pendingAck.sentAt}ms latency)`);
+  }
+
+  /**
+   * Add delta to batch for coalescing
+   */
+  private addToBatch(documentId: string, delta: Record<string, any>, originalMessage: DeltaMessage) {
+    let batch = this.pendingBatches.get(documentId);
+
+    if (!batch) {
+      // Create new batch with timer to flush after BATCH_INTERVAL
+      batch = {
+        delta: {},
+        timer: setTimeout(() => {
+          this.flushBatch(documentId);
+        }, this.BATCH_INTERVAL),
+      };
+      this.pendingBatches.set(documentId, batch);
+    }
+
+    // Merge delta into batch (later updates override earlier ones)
+    Object.assign(batch.delta, delta);
+  }
+
+  /**
+   * Flush batched deltas for a document
+   */
+  private flushBatch(documentId: string) {
+    const batch = this.pendingBatches.get(documentId);
+    if (!batch) return;
+
+    // Clear timer and remove batch
+    clearTimeout(batch.timer);
+    this.pendingBatches.delete(documentId);
+
+    // Broadcast the coalesced delta
+    if (Object.keys(batch.delta).length > 0) {
+      const authoritativeMessage: DeltaMessage = {
+        type: MessageType.DELTA,
+        id: createMessageId(),
+        timestamp: Date.now(),
+        documentId,
+        delta: batch.delta,
+        vectorClock: {},
+      };
+
+      console.log(`[Server] Broadcasting batched delta for ${documentId} (${Object.keys(batch.delta).length} fields):`, batch.delta);
+      this.broadcast(documentId, authoritativeMessage);
+    }
+  }
+
+  /**
+   * Broadcast message to all subscribers of a document (with ACK tracking)
    */
   private broadcast(documentId: string, message: Message, excludeConnectionId?: string) {
     const subscribers = this.coordinator.getSubscribers(documentId);
-    
+
     let sentCount = 0;
     for (const connectionId of subscribers) {
       // Skip the sender
@@ -332,8 +456,15 @@ export class SyncWebSocketServer {
 
       const connection = this.registry.get(connectionId);
       if (connection && connection.state === ConnectionState.AUTHENTICATED) {
-        const sent = connection.send(message);
-        if (sent) sentCount++;
+        // Send with ACK tracking (for delta messages)
+        if (message.type === MessageType.DELTA) {
+          this.sendWithAck(connection, message as DeltaMessage, documentId);
+          sentCount++;
+        } else {
+          // Other message types don't need ACKs
+          const sent = connection.send(message);
+          if (sent) sentCount++;
+        }
       }
     }
 
@@ -341,13 +472,102 @@ export class SyncWebSocketServer {
   }
 
   /**
+   * Send delta with ACK tracking and retry
+   */
+  private sendWithAck(connection: Connection, message: DeltaMessage, documentId: string) {
+    // Ensure message has an ID
+    if (!message.id) {
+      message.id = createMessageId();
+    }
+
+    // Send the message
+    const sent = connection.send(message);
+    if (!sent) {
+      console.error(`Failed to send delta to ${connection.id}`);
+      return;
+    }
+
+    // Track pending ACK
+    const ackKey = `${connection.id}-${message.id}`;
+    const attemptRetry = (attempts: number) => {
+      if (attempts >= this.MAX_RETRIES) {
+        console.error(`Max retries reached for message ${message.id} to ${connection.id}`);
+        this.pendingAcks.delete(ackKey);
+        return;
+      }
+
+      // Setup retry timeout
+      const timeout = setTimeout(() => {
+        // Check if already ACKed (race condition safety)
+        if (!this.pendingAcks.has(ackKey)) {
+          return;
+        }
+
+        console.warn(`ACK timeout for message ${message.id} to ${connection.id}, retry ${attempts + 1}/${this.MAX_RETRIES}`);
+
+        // Resend the message
+        const conn = this.registry.get(connection.id);
+        if (conn && conn.state === ConnectionState.AUTHENTICATED) {
+          const resent = conn.send(message);
+          if (resent) {
+            // Update attempt count and setup next retry
+            const pendingAck = this.pendingAcks.get(ackKey);
+            if (pendingAck) {
+              pendingAck.attempts = attempts + 1;
+              pendingAck.sentAt = Date.now();
+              attemptRetry(attempts + 1);
+            }
+          } else {
+            // Connection is dead, clean up
+            this.pendingAcks.delete(ackKey);
+          }
+        } else {
+          // Connection gone, clean up
+          this.pendingAcks.delete(ackKey);
+        }
+      }, this.ACK_TIMEOUT);
+
+      // Store pending ACK info
+      this.pendingAcks.set(ackKey, {
+        messageId: message.id,
+        documentId,
+        message,
+        targetConnectionId: connection.id,
+        attempts,
+        timeout,
+        sentAt: Date.now(),
+      });
+    };
+
+    // Start retry tracking
+    attemptRetry(0);
+  }
+
+  /**
    * Handle connection disconnect
    */
   private handleDisconnect(connection: Connection) {
     console.log(`Connection ${connection.id} disconnected`);
-    
+
+    // Clean up all document subscriptions for this connection
+    const subscriptions = connection.getSubscriptions();
+    for (const documentId of subscriptions) {
+      this.coordinator.unsubscribe(documentId, connection.id);
+    }
+
+    // Clean up pending ACKs for this connection
+    const keysToDelete: string[] = [];
+    for (const [key, pendingAck] of this.pendingAcks.entries()) {
+      if (pendingAck.targetConnectionId === connection.id) {
+        clearTimeout(pendingAck.timeout);
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this.pendingAcks.delete(key);
+    }
+
     // Connection will be automatically removed from registry via the close event
-    // Subscriptions will be cleaned up when connection is removed
   }
 
   /**
@@ -363,15 +583,22 @@ export class SyncWebSocketServer {
   /**
    * Graceful shutdown
    */
+  /**
+   * Clear coordinator's in-memory cache (for test cleanup)
+   */
+  clearCoordinatorCache(): void {
+    this.coordinator.clearCache();
+  }
+
   async close() {
     console.log('Closing WebSocket server...');
-    
+
     // Close all connections
     this.registry.closeAll(1001, 'Server shutdown');
-    
+
     // Cleanup coordinator resources
     this.coordinator.dispose();
-    
+
     // Close WebSocket server
     return new Promise<void>((resolve) => {
       this.wss.close(() => {

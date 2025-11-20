@@ -13,13 +13,16 @@ import {
   sleep,
   restartTestServer,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Server Restart', () => {
   setupTestSuite();
 
-  const docId = 'server-restart-doc';
+  // Generate unique document ID for each test to avoid pollution
+  const getDocId = () => generateTestId('restart-doc');
 
   it('should preserve data after server restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -42,6 +45,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with pending changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -68,6 +72,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart during active sync', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -107,32 +112,45 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle multiple consecutive restarts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
-    
+
     await clientA.connect();
     await clientB.connect();
-    
+
+    // Initial subscription for both clients
+    await clientA.getDocumentState(docId);
+    await clientB.getDocumentState(docId);
+
     for (let i = 0; i < 3; i++) {
-      // Make change
+      // Make change - need enough time for persistence
       await clientA.setField(docId, `restart${i}`, `value${i}`);
-      await sleep(200);
-      
+      await sleep(500); // Increased for reliable persistence
+
       // Restart
       await restartTestServer();
-      await sleep(400);
-      
+      await sleep(500);
+
       // Reconnect
       await clientA.connect();
       await clientB.connect();
-      
+
+      // Explicitly request document state to trigger resync
+      await clientA.getDocumentState(docId);
+      await clientB.getDocumentState(docId);
+
+      // Allow time for sync
+      await sleep(500);
+
       // Wait for sync
       await clientB.waitForField(docId, `restart${i}`, `value${i}`);
     }
-    
+
     await assertEventualConvergence([clientA, clientB], docId);
-  });
+  }, { timeout: 60000 }); // 3 iterations with restarts + sync time
 
   it('should handle restart with clients offline', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -159,6 +177,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with mixed offline/online clients', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -182,19 +201,36 @@ describe('Offline/Online - Server Restart', () => {
     // A and B reconnect
     await clientA.connect();
     await clientB.connect();
-    
+
+    // Explicitly request document state to trigger resync and subscription
+    await clientA.getDocumentState(docId);
+    await clientB.getDocumentState(docId);
+
+    // Allow time for A and B to fully subscribe with server
+    await sleep(800);
+
     // C still offline, makes changes
     await clientC.setField(docId, 'from_C', 'offline_value');
-    
-    // C reconnects
+
+    // C reconnects - this flushes offline queue immediately after auth
     await clientC.connect();
-    
-    // All should converge
-    await sleep(600);
+
+    // Small delay to let queue flush complete before getDocumentState
+    await sleep(300);
+
+    // C gets document state to subscribe
+    await clientC.getDocumentState(docId);
+
+    // Allow time for full sync propagation
+    await sleep(1500);
+
+    // All clients should converge
+    await clientA.waitForField(docId, 'from_C', 'offline_value');
     await assertEventualConvergence([clientA, clientB, clientC], docId);
-  });
+  }, { timeout: 35000 }); // sleeps + restart + buffer
 
   it('should preserve vector clocks after restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -226,6 +262,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle rapid restarts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -249,6 +286,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with large document', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -276,6 +314,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with delete operations', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -306,6 +345,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle graceful shutdown and restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -328,6 +368,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with authentication', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     // Connect with auth
@@ -351,6 +392,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should recover from crash restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -374,6 +416,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should handle restart with pending offline queue', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -403,6 +446,7 @@ describe('Offline/Online - Server Restart', () => {
   });
 
   it('should maintain consistency across restart', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();

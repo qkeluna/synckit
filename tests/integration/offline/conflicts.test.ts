@@ -13,13 +13,15 @@ import {
   assertLWWResolution,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Conflict Resolution', () => {
   setupTestSuite();
 
-  const docId = 'conflict-doc';
+  const getDocId = () => generateTestId('conflict-doc');
 
   it('should resolve simple offline conflict with LWW', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -50,6 +52,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle concurrent updates to same field', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -83,6 +86,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should resolve conflicts on multiple fields', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -117,6 +121,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict with delete operation', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -144,6 +149,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should resolve timestamp-based conflicts deterministically', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -174,6 +180,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle add-wins semantics for different fields', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -204,6 +211,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle sequential conflicts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -239,6 +247,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle complex multi-client conflicts', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC, clientD] = await createClients(4);
     
     await Promise.all([
@@ -285,6 +294,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict with null value', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -312,6 +322,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle rapid conflicting updates', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -341,6 +352,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should preserve non-conflicting fields during conflict', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -374,6 +386,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict with type changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -401,6 +414,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle nested conflicts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -428,6 +442,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict during network partition', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -456,6 +471,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle cascading conflicts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -493,6 +509,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflicting add and delete', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -521,6 +538,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict with identical values', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -550,6 +568,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should maintain conflict history for debugging', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -580,6 +599,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle high-frequency conflict generation', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -607,6 +627,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle conflict with empty field', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -634,6 +655,7 @@ describe('Offline/Online - Conflict Resolution', () => {
   });
 
   it('should handle asymmetric conflicts', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();

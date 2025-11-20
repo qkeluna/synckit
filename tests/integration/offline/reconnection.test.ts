@@ -12,13 +12,15 @@ import {
   assertFieldSynced,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Reconnection', () => {
   setupTestSuite();
 
-  const docId = 'reconnection-doc';
+  const getDocId = () => generateTestId('reconnection-doc');
 
   it('should automatically reconnect after disconnect', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -45,6 +47,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should recover session state after reconnection', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -69,6 +72,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle multiple reconnection attempts', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
     
     await client[0].connect();
@@ -91,6 +95,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should queue operations during disconnection', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -121,6 +126,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with pending local changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -143,6 +149,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with remote changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -168,6 +175,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with both local and remote changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -194,6 +202,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle rapid reconnections', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -216,6 +225,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection timeout', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
     
     await client[0].connect();
@@ -236,6 +246,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should preserve vector clock across reconnections', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -260,6 +271,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection after server was offline', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -291,6 +303,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with authentication', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
     
     // Connect with token
@@ -310,6 +323,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection after token expiry', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
     
     // Connect with token
@@ -331,6 +345,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle sequential reconnections', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -362,6 +377,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with large sync delta', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -388,6 +404,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with conflicting operations', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -417,6 +434,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle graceful reconnection', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -440,6 +458,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection storm', async () => {
+    const docId = getDocId();
     const clients = await createClients(10);
     
     // All connect
@@ -462,6 +481,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection with persistent storage', async () => {
+    const docId = getDocId();
     const client = await createClients(1);
     
     await client[0].connect();
@@ -488,6 +508,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle partial reconnection', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -519,6 +540,7 @@ describe('Offline/Online - Reconnection', () => {
   });
 
   it('should handle reconnection after network failure', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();

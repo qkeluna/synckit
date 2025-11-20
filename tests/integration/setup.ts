@@ -7,7 +7,11 @@
 import { beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { setupTestServer, teardownTestServer, restartTestServer, TestServer } from './helpers/test-server';
 import { TestClient, cleanupTestClients } from './helpers/test-client';
+import { clearMemoryStorage } from './helpers/memory-storage';
 import { TEST_CONFIG } from './config';
+
+// Re-export TEST_CONFIG for test files
+export { TEST_CONFIG } from './config';
 
 /**
  * Global test state
@@ -89,8 +93,16 @@ export async function cleanupEachTest(): Promise<void> {
     globalState.clients = [];
   }
 
+  // Clear memory storage to prevent state pollution between tests
+  clearMemoryStorage();
+
+  // Clear coordinator's in-memory cache to prevent state pollution
+  if (globalState.server) {
+    globalState.server.clearCoordinatorCache();
+  }
+
   if (TEST_CONFIG.features.verbose) {
-    console.log('[AfterEach] Test cleaned up\n');
+    console.log('[AfterEach] Test cleaned up (including storage and coordinator cache)\n');
   }
 }
 
@@ -103,11 +115,17 @@ export function registerClient(client: TestClient): TestClient {
 }
 
 /**
- * Create and register test client
+ * Create and register test client (auto-connects by default)
  */
 export async function createClient(config?: any): Promise<TestClient> {
   const client = new TestClient(config);
   await client.init();
+  
+  // Auto-connect unless explicitly disabled
+  if (config?.autoConnect !== false) {
+    await client.connect(config?.token);
+  }
+  
   return registerClient(client);
 }
 

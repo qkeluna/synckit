@@ -39,6 +39,7 @@ export class Connection {
   private ws: WebSocket;
   private heartbeatInterval?: Timer;
   private isAlive: boolean = true;
+  private subscribedDocuments: Set<string> = new Set();
 
   constructor(ws: WebSocket, connectionId: string) {
     this.id = connectionId;
@@ -190,6 +191,20 @@ export class Connection {
   terminate() {
     this.stopHeartbeat();
     this.ws.terminate();
+  }
+
+  /**
+   * Add document subscription
+   */
+  addSubscription(documentId: string) {
+    this.subscribedDocuments.add(documentId);
+  }
+
+  /**
+   * Get all subscribed document IDs
+   */
+  getSubscriptions(): string[] {
+    return Array.from(this.subscribedDocuments);
   }
 
   // Simple event emitter for connection events

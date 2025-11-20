@@ -12,13 +12,15 @@ import {
   assertFieldSynced,
   sleep,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('Offline/Online - Network Partition', () => {
   setupTestSuite();
 
-  const docId = 'partition-doc';
+  const getDocId = () => generateTestId('partition-doc');
 
   it('should handle simple network partition and heal', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     // All connected initially
@@ -52,6 +54,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle three-way partition', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -87,6 +90,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle conflicting writes during partition', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -116,6 +120,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with different field updates', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -144,6 +149,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle extended partition period', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -174,6 +180,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with deletes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -200,6 +207,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle multiple partition-heal cycles', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -225,6 +233,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle asymmetric partition (A can reach B, B cannot reach A)', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -255,6 +264,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with rapid state changes', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -291,6 +301,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle cascading partition', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -326,6 +337,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with one-way sync', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -356,6 +368,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should maintain causality across partition', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -387,6 +400,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with empty document', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();
@@ -413,6 +427,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition with complex conflict patterns', async () => {
+    const docId = getDocId();
     const [clientA, clientB, clientC] = await createClients(3);
     
     await clientA.connect();
@@ -460,6 +475,7 @@ describe('Offline/Online - Network Partition', () => {
   });
 
   it('should handle partition lasting longer than timeout', async () => {
+    const docId = getDocId();
     const [clientA, clientB] = await createClients(2);
     
     await clientA.connect();

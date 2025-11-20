@@ -277,7 +277,7 @@ describe('Storage - Migrations', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20s timeout for batch migration
 
   it('should handle rollback scenarios', async () => {
     const rollbackDocId = 'rollback-doc';

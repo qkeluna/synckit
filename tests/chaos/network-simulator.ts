@@ -63,7 +63,6 @@ export class ChaosNetworkSimulator {
   private config: NetworkSimConfig;
   private messageQueue: QueuedMessage[] = [];
   private isProcessingQueue: boolean = false;
-  private disconnectTimeout: NodeJS.Timeout | null = null;
   private messagesDropped: number = 0;
   private messagesDuplicated: number = 0;
   private messagesCorrupted: number = 0;
@@ -98,10 +97,11 @@ export class ChaosNetworkSimulator {
     }
     
     // Check for corruption
+    // In real networks, corrupted packets are detected by checksums and DROPPED, not delivered with wrong data
+    // So we treat corruption as packet loss to simulate realistic behavior
     if (this.shouldCorrupt()) {
       this.messagesCorrupted++;
-      const corruptedValue = this.corruptValue(value);
-      await this.sendWithChaos('setField', [docId, field, corruptedValue]);
+      // Drop the corrupted message (realistic network behavior)
       return;
     }
     
@@ -170,10 +170,6 @@ export class ChaosNetworkSimulator {
    * Disconnect
    */
   async disconnect(): Promise<void> {
-    if (this.disconnectTimeout) {
-      clearTimeout(this.disconnectTimeout);
-      this.disconnectTimeout = null;
-    }
     return await this.client.disconnect();
   }
 
@@ -334,29 +330,27 @@ export class ChaosNetworkSimulator {
    */
   private async maybeDisconnect(): Promise<void> {
     if (!this.config.disconnection) return;
-    
+
     const { probability, minDuration, maxDuration } = this.config.disconnection;
-    
+
     if (Math.random() < probability && this.client.isConnected) {
       this.disconnections++;
-      
+
       const duration = minDuration + Math.random() * (maxDuration - minDuration);
-      
+
       // Disconnect
       await this.client.disconnect();
-      
-      // Schedule reconnection
-      this.disconnectTimeout = setTimeout(async () => {
-        try {
-          await this.client.connect();
-        } catch (error) {
-          // Ignore reconnection errors
-        }
-        this.disconnectTimeout = null;
-      }, duration);
-      
-      // Wait for reconnection
+
+      // Wait for the disconnection duration
       await sleep(duration);
+
+      // Reconnect and wait for it to complete
+      try {
+        await this.client.connect();
+      } catch (error) {
+        // Ignore reconnection errors but log them
+        console.error('[ChaosNetworkSimulator] Reconnection failed:', error);
+      }
     }
   }
 
@@ -364,10 +358,6 @@ export class ChaosNetworkSimulator {
    * Cleanup
    */
   async cleanup(): Promise<void> {
-    if (this.disconnectTimeout) {
-      clearTimeout(this.disconnectTimeout);
-      this.disconnectTimeout = null;
-    }
     await this.client.cleanup();
   }
 }
@@ -474,7 +464,7 @@ export const ChaosPresets = {
    */
   disconnections: {
     disconnection: {
-      probability: 0.05,
+      probability: 0.10, // 10% per operation (was 0.05)
       minDuration: 100,
       maxDuration: 500,
     },
@@ -490,7 +480,7 @@ export const ChaosPresets = {
     duplicationProbability: 0.05,
     corruptionProbability: 0.03,
     disconnection: {
-      probability: 0.03,
+      probability: 0.08, // 8% per operation (was 0.03)
       minDuration: 100,
       maxDuration: 400,
     },

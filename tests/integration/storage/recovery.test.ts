@@ -185,7 +185,7 @@ describe('Storage - Recovery', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20s timeout for multiple docs
 
   it('should maintain data consistency after restart', async () => {
     const consistencyDocId = 'consistency-doc';
@@ -241,14 +241,10 @@ describe('Storage - Recovery', () => {
       console.log('Creating data before shutdown...');
       await client1.setField(shutdownDocId, 'beforeShutdown', 'important');
       await sleep(1000);
-      
+
       // Graceful shutdown (via restart)
       console.log('Performing graceful shutdown...');
-      await teardownTestServer();
-      await sleep(1000);
-      
-      // Restart
-      await setupTestServer();
+      await restartTestServer({ graceful: true });
       await sleep(2000);
       
       // New client connects
@@ -265,7 +261,7 @@ describe('Storage - Recovery', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20s timeout for graceful
 
   it('should recover deletes after restart', async () => {
     const deleteDocId = 'delete-recovery-doc';
@@ -348,7 +344,7 @@ describe('Storage - Recovery', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20s timeout for quick restarts
 
   it('should recover large documents after restart', async () => {
     const largeRecoveryDocId = 'large-recovery-doc';
@@ -390,7 +386,7 @@ describe('Storage - Recovery', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, 20000); // 20s timeout for large docs
 
   it('should recover with active clients reconnecting', async () => {
     const multiClientDocId = 'multi-client-recovery-doc';

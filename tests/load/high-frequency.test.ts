@@ -18,9 +18,11 @@ describe('Load - High-Frequency Updates', () => {
     await teardownTestServer();
   });
 
-  const docId = 'high-freq-doc';
+  // Helper to generate unique document ID per test
+  const uniqueDocId = () => `highfreq-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   it('should handle 100 ops/sec from single client', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -63,13 +65,14 @@ describe('Load - High-Frequency Updates', () => {
       
       console.log(`Synced ${syncedCount}/${operationCount} fields`);
       expect(syncedCount).toBeGreaterThan(operationCount * 0.8); // 80% threshold
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle rapid updates to same field', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -100,9 +103,10 @@ describe('Load - High-Frequency Updates', () => {
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 15000 });
 
   it('should handle high-frequency concurrent writes', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -144,13 +148,14 @@ describe('Load - High-Frequency Updates', () => {
       const fieldCount = Object.keys(states[0]).length;
       console.log(`Converged to ${fieldCount}/500 fields`);
       expect(fieldCount).toBeGreaterThan(400);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle burst of 500 ops in 1 second', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -189,13 +194,14 @@ describe('Load - High-Frequency Updates', () => {
       
       console.log(`Synced ${syncedCount}/500 fields`);
       expect(syncedCount).toBeGreaterThan(400);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 20000 });
 
   it('should handle sustained 50 ops/sec for 30 seconds', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -241,13 +247,14 @@ describe('Load - High-Frequency Updates', () => {
       
       console.log(`Synced ${syncedCount}/${operationCount} fields`);
       expect(syncedCount).toBeGreaterThan(operationCount * 0.85);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 60000 });
 
   it('should handle alternating rapid read/write', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -284,13 +291,14 @@ describe('Load - High-Frequency Updates', () => {
       
       const state = await clients[1].getDocumentState(docId);
       expect(Object.keys(state).length).toBeGreaterThan(writes * 0.8);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 20000 });
 
   it('should handle high-frequency deletes', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -328,13 +336,14 @@ describe('Load - High-Frequency Updates', () => {
       console.log(`Remaining fields: ${remaining} (expected ~250)`);
       expect(remaining).toBeLessThan(300);
       expect(remaining).toBeGreaterThan(200);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 40000 });
 
   it('should measure latency at high frequency', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -375,11 +384,11 @@ describe('Load - High-Frequency Updates', () => {
       
       // Verify reasonable latency
       expect(p95).toBeLessThan(1000);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle high-frequency updates to multiple documents', async () => {
     const clients: TestClient[] = [];
@@ -414,13 +423,14 @@ describe('Load - High-Frequency Updates', () => {
         console.log(`  Doc ${doc}: ${fieldCount} fields`);
         expect(fieldCount).toBeGreaterThan(40);
       }
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle high-frequency with conflicts', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -457,14 +467,15 @@ describe('Load - High-Frequency Updates', () => {
       
       expect(states[0]).toEqual(states[1]);
       expect(states[1]).toEqual(states[2]);
-      
+
       console.log('High-frequency conflicts resolved ✅');
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 30000 });
 
   it('should handle rate spike pattern', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -510,13 +521,14 @@ describe('Load - High-Frequency Updates', () => {
       
       console.log(`Synced ${syncedCount}/${operationCount} fields`);
       expect(syncedCount).toBeGreaterThan(operationCount * 0.8);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 40000 });
 
   it('should track operation success rate at high frequency', async () => {
+    const docId = uniqueDocId();
     const clients: TestClient[] = [];
     
     try {
@@ -558,9 +570,9 @@ describe('Load - High-Frequency Updates', () => {
       
       // Should have high success rate
       expect(successRate).toBeGreaterThan(95);
-      
+
     } finally {
       await Promise.all(clients.map(c => c.cleanup()));
     }
-  });
+  }, { timeout: 20000 });
 });

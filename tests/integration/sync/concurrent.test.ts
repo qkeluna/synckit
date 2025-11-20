@@ -4,7 +4,7 @@
  * Tests concurrent edits and LWW conflict resolution
  */
 
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import {
   setupTestSuite,
   createClients,
@@ -14,11 +14,16 @@ import {
   sleep,
   TEST_CONFIG,
 } from '../setup';
+import { generateTestId } from '../config';
 
 describe('E2E Sync - Concurrent Operations', () => {
   setupTestSuite();
 
-  const docId = 'concurrent-doc';
+  let docId: string;
+
+  beforeEach(() => {
+    docId = generateTestId('concurrent');
+  });
 
   it('should resolve concurrent edits to same field (LWW)', async () => {
     const [clientA, clientB] = await createClients(2);
