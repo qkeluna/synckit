@@ -1,0 +1,39 @@
+{
+  "name": "@synckit-examples/collaborative-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-time collaborative text editor built with SyncKit and CodeMirror 6",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.3.2",
+    "@codemirror/lang-javascript": "^6.2.1",
+    "@codemirror/lang-markdown": "^6.2.3",
+    "@codemirror/language": "^6.9.3",
+    "@codemirror/state": "^6.3.3",
+    "@codemirror/view": "^6.22.1",
+    "@synckit/sdk": "*",
+    "codemirror": "^6.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
