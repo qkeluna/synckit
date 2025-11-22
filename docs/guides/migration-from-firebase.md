@@ -106,7 +106,7 @@ A comprehensive guide for migrating from Firebase/Firestore to SyncKit for true 
 | **Pricing** | 💰 Usage-based, unpredictable | ✅ Self-hosted, predictable | 🏆 SyncKit |
 | **Vendor Lock-in** | ❌ Deep Google integration | ✅ Open source, portable | 🏆 SyncKit |
 | **Query Capabilities** | ⚠️ Limited (single-field range) | ✅ Use any database (SQL, NoSQL) | 🏆 SyncKit |
-| **Bundle Size** | ~150KB gzipped | **49KB** gzipped (44KB lite) | 🏆 SyncKit (3x smaller) |
+| **Bundle Size** | ~150KB gzipped | **~53KB** gzipped (~48KB lite) | 🏆 SyncKit (2.8x smaller) |
 | **Cold Start** | ⚠️ 2-30s on slow networks | ✅ <100ms (local data) | 🏆 SyncKit |
 | **Managed Backend** | ✅ Fully managed | ⚠️ Self-hosted (or managed soon) | 🏆 Firebase |
 | **Auth Integration** | ✅ Built-in | ⚠️ Bring your own (JWT) | 🏆 Firebase |
@@ -399,7 +399,7 @@ async function getIncompleteTodos() {
 ```typescript
 // Option 1: Client-side filtering (simple cases)
 const todoList = sync.document<TodoList>('todos')
-const todos = await todoList.get()
+const todos = todoList.get()
 const incompleteTodos = Object.values(todos)
   .filter(t => !t.completed)
   .sort((a, b) => b.createdAt - a.createdAt)
@@ -439,7 +439,7 @@ describe('Migration parity tests', () => {
 
     // Read from SyncKit
     const synckitDoc = sync.document<Todo>(todoId)
-    const synckitData = await synckitDoc.get()
+    const synckitData = synckitDoc.get()
 
     // Should match
     expect(synckitData).toEqual(firebaseData)
@@ -460,7 +460,7 @@ describe('Migration parity tests', () => {
 
     // Verify both updated
     const firebaseDoc = await firebase.collection('todos').doc(todoId).get()
-    const synckitDoc = await sync.document<Todo>(todoId).get()
+    const synckitDoc = sync.document<Todo>(todoId).get()
 
     expect(firebaseDoc.data().completed).toBe(true)
     expect(synckitDoc.completed).toBe(true)
@@ -479,7 +479,7 @@ test('SyncKit should be faster than Firebase for local reads', async () => {
 
   // SyncKit read
   const synckitStart = performance.now()
-  await sync.document<Todo>('todo-1').get()
+  sync.document<Todo>('todo-1').get()
   const synckitDuration = performance.now() - synckitStart
 
   console.log(`Firebase: ${firebaseDuration.toFixed(2)}ms`)
@@ -610,13 +610,9 @@ service cloud.firestore {
 ```typescript
 // Server-side JWT validation
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  auth: async () => {
-    // Get Firebase token
-    const user = firebase.auth().currentUser
-    const token = await user?.getIdToken()
-    return token || ''
-  }
+  serverUrl: 'ws://localhost:8080',  // Optional - for remote sync
+  // Note: Built-in auth integration coming in future version
+  // For now, handle authentication at the server level
 })
 
 // Server validates JWT and checks permissions
@@ -686,7 +682,7 @@ aws s3 sync dist/ s3://my-bucket
 
 | Metric | Before (Firebase) | After (SyncKit) | Improvement |
 |--------|-------------------|-----------------|-------------|
-| **Bundle size** | ~150KB | **49KB** (44KB lite) | 67% smaller |
+| **Bundle size** | ~150KB | **~53KB** (~48KB lite) | 65% smaller |
 | **Offline storage** | 40MB (cache) | Unlimited (IndexedDB) | ∞ |
 | **Monthly cost** | $25-$2,000+ | $0 (self-hosted) | 100% savings |
 | **Initial load** | 2-30s | <100ms | 20-300x faster |

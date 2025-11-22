@@ -4,7 +4,7 @@ import { EditorState } from '@codemirror/state'
 import { basicSetup } from 'codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { markdown } from '@codemirror/lang-markdown'
-import { useSyncDocument } from '@synckit/sdk'
+import { useSyncDocument } from '@synckit/sdk/react'
 
 interface EditorProps {
   documentId: string

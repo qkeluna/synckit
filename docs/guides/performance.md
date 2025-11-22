@@ -169,47 +169,40 @@ sync.on('sync-complete', () => {
 
 ## Bundle Size Optimization
 
-### Tiered Bundle Variants
+### Bundle Variants
 
-SyncKit offers 4 optimized variants - pay only for what you use:
+SyncKit offers 2 optimized variants:
 
 ```
 Variant        WASM      SDK       Total     Use Case
 ─────────────────────────────────────────────────────────────
-core-lite      43.8 KB   ~4 KB    ~48 KB    Local-only sync
-core           49.0 KB   ~4 KB    ~53 KB    Network sync (default)
-text           48.9 KB   ~4 KB    ~53 KB    + Collaborative editing
-full           48.9 KB   ~4 KB    ~53 KB    + All CRDTs
+Lite           44 KB     ~4 KB    ~48 KB    Local-only sync
+Default        49 KB     ~4 KB    ~53 KB    Network sync (recommended)
 
-Compare to competitors:
-- SyncKit (best):     ~48 KB   ✅
-- Yjs:                ~65 KB
-- Firebase:          ~150 KB
-- Automerge:         ~350 KB
-- RxDB:             ~100 KB+
+Compare to competitors (gzipped):
+- Yjs:               ~19 KB   (pure JS)
+- SyncKit Lite:      ~48 KB   (WASM + JS)
+- SyncKit Default:   ~53 KB   (WASM + JS, recommended)
+- Automerge:      ~60-78 KB   (WASM + JS)
+- Firebase:        ~150 KB   (pure JS)
+- RxDB:           ~100 KB+
 ```
 
 **[Choosing a variant guide →](./choosing-variant.md)**
 
 ### Variant Selection
 
-Choose the smallest variant that meets your needs:
+Choose the variant that meets your needs:
 
 ```typescript
-// Core-Lite (44 KB) - Local-only sync
-import { SyncKit } from '@synckit/sdk/core-lite'
+// Lite (~48 KB) - Local-only sync
+import { SyncKit } from '@synckit/sdk/lite'
 
-// Core (53 KB) - Network sync (recommended default)
-import { SyncKit } from '@synckit/sdk/core'
-
-// Text (53 KB) - Collaborative text editing
-import { SyncKit } from '@synckit/sdk/text'
-
-// Full (53 KB) - All CRDTs
-import { SyncKit } from '@synckit/sdk/full'
+// Default (~53 KB) - Network sync (recommended)
+import { SyncKit } from '@synckit/sdk'
 ```
 
-**Rule of thumb:** Use Core variant unless you have a specific need. See the [variant selection guide](./choosing-variant.md) for details.
+**Rule of thumb:** Use Default variant unless you don't need server sync. See the [variant selection guide](./choosing-variant.md) for details.
 
 ### Tree-Shaking
 
@@ -217,14 +210,14 @@ Variants are already optimized - you automatically get only what you import:
 
 ```typescript
 // ✅ Good: Import from one variant
-import { SyncKit } from '@synckit/sdk/core'
+import { SyncKit } from '@synckit/sdk'
 
 // ❌ Bad: Mixing variants (duplicates WASM)
-import { SyncKit } from '@synckit/sdk/core'
-import { TextCRDT } from '@synckit/sdk/text'  // Loads separate WASM!
+import { SyncKit } from '@synckit/sdk'
+import { SyncDocument } from '@synckit/sdk/lite'  // Loads separate WASM!
 
 // ✅ Good: Import everything from one variant
-import { SyncKit, TextCRDT } from '@synckit/sdk/text'
+import { SyncKit, SyncDocument } from '@synckit/sdk'
 ```
 
 **Vite configuration:**
@@ -251,11 +244,11 @@ export default {
 Load SyncKit on-demand for better initial load:
 
 ```typescript
-// Lazy load SyncKit (with specific variant)
+// Lazy load SyncKit
 const initSync = async () => {
-  const { SyncKit } = await import('@synckit/sdk/core')
+  const { SyncKit } = await import('@synckit/sdk')
   return new SyncKit({
-    url: 'ws://localhost:8080'
+    serverUrl: 'ws://localhost:8080'
   })
 }
 
@@ -273,24 +266,23 @@ function App() {
 }
 ```
 
-### Lazy Loading Variants
+### Lazy Loading for Rarely-Used Features
 
-Load advanced features only when needed:
+Load SyncKit only when needed:
 
 ```typescript
-// Initial load: Core variant (53 KB)
-import { SyncKit } from '@synckit/sdk/core'
-
-// Later: Lazy load text editing when user opens editor
-async function openTextEditor(docId: string) {
-  const { SyncKit } = await import('@synckit/sdk/text')
-  const sync = new SyncKit()
-  const text = sync.text(docId)
-  return text
+// Initial load: No SyncKit yet
+// Later: Load when user needs offline sync
+async function enableOfflineSync() {
+  const { SyncKit } = await import('@synckit/sdk')
+  const sync = new SyncKit({
+    serverUrl: 'ws://localhost:8080'
+  })
+  return sync
 }
 ```
 
-**Warning:** This loads a separate WASM binary. Only use for rarely-accessed features.
+**Note:** For most apps, SyncKit is essential from the start, so lazy loading isn't necessary.
 
 ### Dynamic Imports for React Adapter
 
@@ -341,15 +333,15 @@ function TodoItem({ id }) {
 async function cleanupOldDocuments() {
   const cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000)  // 30 days
 
-  // Get all document IDs (future API)
-  const docIds = await sync.getAllDocumentIds()
+  // Get all document IDs
+  const docIds = await sync.listDocuments()
 
   for (const id of docIds) {
     const doc = sync.document(id)
-    const data = await doc.get()
+    const data = doc.get()
 
     if (data.createdAt < cutoff && data.deleted) {
-      await doc.delete()  // Permanently delete
+      await sync.deleteDocument(id)  // Permanently delete entire document
     }
   }
 }
@@ -444,12 +436,12 @@ Only sync documents you need:
 ```typescript
 // ❌ Sync everything
 const sync = new SyncKit({
-  url: 'ws://localhost:8080'
+  serverUrl: 'ws://localhost:8080'
 })
 
 // ✅ Sync only active project
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   syncFilter: (docId) => docId.startsWith('project-123-')
 })
 ```
@@ -513,7 +505,7 @@ Move sync operations to a background thread for 60fps UI:
 import { SyncKit } from '@synckit/sdk'
 
 const sync = new SyncKit({
-  url: 'ws://localhost:8080'
+  serverUrl: 'ws://localhost:8080'
 })
 
 // Listen for messages from main thread
@@ -527,7 +519,7 @@ self.onmessage = async (event) => {
       break
 
     case 'get':
-      const result = await sync.document(id).get()
+      const result = sync.document(id).get()
       self.postMessage({ type: 'get-result', id, data: result })
       break
   }
@@ -641,14 +633,17 @@ function TodoList({ todos }: { todos: Todo[] }) {
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useDocument } from '@synckit/vue'
+import { computed, ref } from 'vue'
+import { SyncKit } from '@synckit/sdk'
 
-const { data: todoList } = useDocument(sync, 'todo-list')
+// Note: @synckit/sdk/vue coming in v0.2.0
+// For now, use the core SDK with Vue reactivity
+const sync = new SyncKit()
+const todoList = ref({})
 
 // Memoize filtered results
 const completedTodos = computed(() =>
-  todoList.value.todos.filter(t => t.completed)
+  todoList.value.todos?.filter(t => t.completed) || []
 )
 </script>
 ```
@@ -657,10 +652,13 @@ const completedTodos = computed(() =>
 
 ```svelte
 <script>
-  import { derived } from 'svelte/store'
-  import { syncDocument } from '@synckit/svelte'
+  import { writable, derived } from 'svelte/store'
+  import { SyncKit } from '@synckit/sdk'
 
-  const todoList = syncDocument(sync, 'todo-list')
+  // Note: @synckit/sdk/svelte coming in v0.2.0
+  // For now, use the core SDK with Svelte stores
+  const sync = new SyncKit()
+  const todoList = writable({ todos: [] })
 
   // Derive computed store
   const completedTodos = derived(

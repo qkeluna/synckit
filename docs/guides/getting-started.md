@@ -2,7 +2,7 @@
 
 **Build offline-first apps with real-time sync in 5 minutes.**
 
-SyncKit is a production-ready sync engine that makes building local-first applications trivial. No vendor lock-in, true offline support, and automatic conflict resolution—all in a 49KB bundle.
+SyncKit is a production-ready sync engine that makes building local-first applications trivial. No vendor lock-in, true offline support, and automatic conflict resolution—all in a ~53KB bundle.
 
 > **What you'll build:** A synced todo app that works offline, syncs in real-time across tabs, and persists data locally—in just 5 minutes.
 
@@ -295,8 +295,8 @@ Add real-time sync across devices:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',  // Your SyncKit server
-  auth: () => getAuthToken()   // Optional JWT authentication
+  serverUrl: 'ws://localhost:8080',  // Your SyncKit server (optional - for remote sync)
+  // Note: Authentication is not yet implemented in v0.1.0
 })
 ```
 
@@ -421,7 +421,7 @@ Need assistance?
 |---------|:-------:|:--------:|:--------:|:---:|:---------:|
 | **True Offline-First** | ✅ Native | ⚠️ Cache only | ❌ None | ✅ Full | ✅ Full |
 | **Works Without Server** | ✅ Yes | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
-| **Bundle Size** | **49KB** (44KB lite) | ~150KB | ~45KB | ~65KB | ~316KB |
+| **Bundle Size** | **~53KB** (~48KB lite) | ~150KB | ~45KB | ~19KB | ~60-78KB |
 | **Automatic Conflicts** | ✅ LWW | ✅ LWW | ⚠️ Manual | ✅ CRDT | ✅ CRDT |
 | **Self-Hosted** | ✅ Yes | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes |
 | **Multi-Language Server** | ✅ Yes | ❌ No | ⚠️ Postgres | ❌ No | ❌ No |

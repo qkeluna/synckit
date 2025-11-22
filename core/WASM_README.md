@@ -82,7 +82,7 @@ Or copy `tests/wasm_test.html` to the `pkg/` directory after building.
 Production-ready sizes (as of Phase 5):
 
 - **Raw WASM**: 114 KB
-- **Gzipped**: 51 KB (competitive with Yjs: 50KB, Automerge: 80KB)
+- **Gzipped**: 49 KB WASM (competitive with Yjs: ~19KB pure JS, Automerge: ~60-78KB WASM+JS)
 
 This includes a **complete feature set**:
 - Full Document sync with LWW

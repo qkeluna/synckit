@@ -1,6 +1,8 @@
 # @synckit/sdk
 
-TypeScript SDK for SyncKit - Production-grade local-first sync in 66KB total (15KB SDK + 51KB WASM).
+TypeScript SDK for SyncKit - Production-grade local-first sync in ~53KB total (49KB WASM + ~4KB SDK).
+
+**Competitive bundle size:** Larger than Yjs (~19KB pure JS), smaller than Automerge (~60-78KB WASM+JS).
 
 ## 🚀 Quick Start
 
@@ -129,7 +131,7 @@ new SyncKit(config?: SyncKitConfig)
 | WASM Core | 51 KB |
 | **Total** | **~66 KB** |
 
-Competitive with Yjs (50KB) and Automerge (80KB) while providing complete CRDT functionality.
+Larger than Yjs (~19KB pure JS), competitive with Automerge (~60-78KB WASM+JS), providing complete CRDT functionality.
 
 ## 🔧 Storage Adapters
 

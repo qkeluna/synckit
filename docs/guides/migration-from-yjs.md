@@ -89,22 +89,21 @@ const awareness = provider.awareness
 
 ### Automerge Pain Points
 
-#### 1. Massive Bundle Size
+#### 1. Large Bundle Size
 
-**Problem:** Automerge is **316KB gzipped** (17x larger than SyncKit).
+**Problem:** Automerge is **~60-78KB gzipped** (similar to SyncKit).
 
-**Size comparison:**
-- SyncKit: **49KB** gzipped (44KB lite)
-- Yjs: ~65KB gzipped
-- Automerge: ~316KB gzipped (4.8x Yjs!)
-- Automerge-wasm: ~219KB gzipped
+**Size comparison (gzipped):**
+- Yjs: **~19KB** (pure JavaScript)
+- SyncKit Lite: **~48KB** (WASM + JS)
+- SyncKit Default: **~53KB** (WASM + JS)
+- Automerge: **~60-78KB** (WASM + JS)
 
 **Impact:**
-- ❌ Eliminates mobile use (3G = 30s+ download)
-- ❌ Fails performance budgets (<170KB target)
-- ❌ Poor Lighthouse scores
+- Bundle size similar to SyncKit
+- Different trade-offs: Automerge = rich CRDTs, SyncKit = structured data sync
 
-**SyncKit solution:** 49KB total, competitive with Yjs, mobile-friendly.
+**SyncKit solution:** ~53KB total, competitive size, simpler API for most use cases.
 
 #### 2. Alpha/Beta Status
 
@@ -157,7 +156,7 @@ doc = change(doc, doc => {
 
 | Feature | Yjs | SyncKit | Winner |
 |---------|-----|---------|--------|
-| **Bundle Size** | ~65KB | **49KB** (44KB lite) | 🏆 SyncKit (1.3x smaller) |
+| **Bundle Size (gzipped)** | **~19KB** | ~53KB (~48KB lite) | 🏆 Yjs (2.8x smaller) |
 | **Learning Curve** | ⚠️ Steep (CRDT internals) | ✅ Simple (document API) | 🏆 SyncKit |
 | **Setup Complexity** | ⚠️ Manual providers | ✅ Zero config | 🏆 SyncKit |
 | **TypeScript Support** | ⚠️ Issues (#460, #425) | ✅ Native TS | 🏆 SyncKit |
@@ -170,8 +169,8 @@ doc = change(doc, doc => {
 **When to migrate from Yjs:**
 - ✅ **HIGH:** Hitting TypeScript/Node.js issues
 - ✅ **HIGH:** Need simpler API for team
-- ✅ **MEDIUM:** Want smaller bundle size
-- ✅ **MEDIUM:** Don't need complex CRDT features
+- ✅ **HIGH:** Need WASM portability for multi-language servers
+- ✅ **MEDIUM:** Don't need character-level text CRDTs
 
 **When to stay with Yjs:**
 - ✅ Heavy collaborative text editing (CodeMirror integration)
@@ -184,20 +183,20 @@ doc = change(doc, doc => {
 
 | Feature | Automerge | SyncKit | Winner |
 |---------|-----------|---------|--------|
-| **Bundle Size** | ~316KB | **49KB** (44KB lite) | 🏆 SyncKit (6.5x smaller!) |
+| **Bundle Size (gzipped)** | ~60-78KB | ~53KB (~48KB lite) | 🏆 SyncKit (slightly smaller) |
 | **Stability** | ⚠️ Alpha/Beta | ✅ Production-ready | 🏆 SyncKit |
-| **Performance** | ⚠️ 86x slower than Yjs | ✅ <1ms operations | 🏆 SyncKit |
-| **Memory Usage** | ⚠️ 180MB | ✅ ~3MB | 🏆 SyncKit |
+| **Performance** | ⚠️ Slower for text ops | ✅ <1ms LWW operations | 🏆 SyncKit (for structured data) |
+| **Memory Usage** | ⚠️ Higher for large docs | ✅ Optimized for LWW | 🏆 SyncKit (for structured data) |
 | **API Simplicity** | ⚠️ Complex (change functions) | ✅ Simple (document.update) | 🏆 SyncKit |
-| **CRDT Features** | ✅ Rich (lists, maps, text) | ⚠️ LWW + Text CRDT | 🏆 Automerge |
-| **Conflict Resolution** | ✅ Automatic CRDT | ✅ Automatic LWW | 🤝 Tie |
+| **CRDT Features** | ✅ Rich (lists, maps, text) | ⚠️ LWW (Text CRDT coming v0.2.0) | 🏆 Automerge |
+| **Conflict Resolution** | ✅ Automatic CRDT | ✅ Automatic LWW | 🤝 Tie (different approaches) |
 | **Ecosystem** | ⚠️ Limited | ⚠️ Growing | 🤝 Tie |
 
 **When to migrate from Automerge:**
-- ✅ **CRITICAL:** 316KB bundle size prohibitive
-- ✅ **CRITICAL:** Performance issues in production
+- ✅ **HIGH:** Need simpler API for structured data
 - ✅ **HIGH:** Alpha/beta status concerning
-- ✅ **HIGH:** Simpler API needed
+- ✅ **MEDIUM:** Want slightly smaller bundle
+- ✅ **MEDIUM:** Performance matters for your use case
 
 **When to stay with Automerge:**
 - ✅ Need specific Automerge CRDT features
@@ -233,10 +232,10 @@ doc = change(doc, doc => {
 - Complete operation history
 
 **✅ Gain:**
-- 85% smaller bundle (316KB → 49KB)
-- 86x faster performance
+- Similar bundle size, simpler API
+- Optimized for structured data sync
 - Production stability
-- Simpler API
+- Easier to learn and maintain
 
 ### What You'll Keep
 
@@ -402,7 +401,7 @@ ymap.set('todo-1', { text: 'Buy milk', completed: false })
 ```typescript
 // Create and configure (all built-in)
 const sync = new SyncKit({
-  url: 'ws://localhost:8080'
+  serverUrl: 'ws://localhost:8080'
 })
 
 // Get document
@@ -464,7 +463,7 @@ await todoList.update({
 })
 
 // Read
-const data = await todoList.get()
+const data = todoList.get()
 console.log(data.todos['todo-1'].text)
 
 // Merge happens automatically (no manual merge)
@@ -615,7 +614,7 @@ describe('Yjs → SyncKit migration parity', () => {
 
     // Compare final state
     const yjsState = Object.fromEntries(ymap.entries())
-    const synckitState = await todo.get()
+    const synckitState = todo.get()
 
     expect(synckitState.text).toBe(yjsState.text)
     expect(synckitState.completed).toBe(yjsState.completed)
@@ -658,8 +657,8 @@ test('both should handle conflicts gracefully', async () => {
   // Sync
   await syncDocuments(todo1, todo2)
 
-  const state1 = await todo1.get()
-  const state2 = await todo2.get()
+  const state1 = todo1.get()
+  const state2 = todo2.get()
 
   // Both converge (LWW guarantees)
   expect(state1.text).toBe(state2.text)
@@ -673,10 +672,10 @@ test('both should handle conflicts gracefully', async () => {
 
 **Key Takeaways:**
 
-1. **Yjs → SyncKit:** Trade CRDT complexity for simplicity (good for 80% of use cases)
-2. **Automerge → SyncKit:** Dramatic size (17x), performance (86x), and stability improvements
-3. **Keep Yjs if:** Heavy collaborative text editing with CodeMirror
-4. **Keep Automerge if:** Need specific CRDT features not in SyncKit
+1. **Yjs → SyncKit:** Trade character-level CRDTs for simpler API (good for structured data)
+2. **Automerge → SyncKit:** Similar size, simpler API, production stability
+3. **Keep Yjs if:** Need character-level text CRDTs (smallest bundle at ~19KB)
+4. **Keep Automerge if:** Need specific rich CRDT features
 
 **Migration Checklist:**
 
@@ -690,11 +689,11 @@ test('both should handle conflicts gracefully', async () => {
 
 | Metric | Yjs → SyncKit | Automerge → SyncKit |
 |--------|---------------|---------------------|
-| **Bundle size** | -25% (65KB → 49KB) | -85% (316KB → 49KB) |
+| **Bundle size** | +179% (~19KB → ~53KB) | Similar (~60-78KB → ~53KB) |
 | **Setup complexity** | -80% (no providers) | -70% (simpler API) |
 | **Learning curve** | Much easier | Much easier |
 | **TypeScript support** | Better | Similar |
-| **Multi-client perf** | 33-200x faster | Not applicable |
+| **Trade-offs** | Larger bundle for WASM portability | Simpler API, production-ready |
 
 **Typical Migration Timeline:**
 

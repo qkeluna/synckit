@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 // Default variant (49 KB) - includes all features (text CRDT, counters, sets)
-import { SyncKit, SyncProvider } from '@synckit/sdk'
+import { SyncKit } from '@synckit/sdk'
+import { SyncProvider } from '@synckit/sdk/react'
 import { useStore } from './store'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'

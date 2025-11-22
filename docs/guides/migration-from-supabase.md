@@ -125,7 +125,7 @@ const channel = supabase
 | **Database** | ✅ Postgres (managed) | ⚠️ Bring your own | 🏆 Supabase |
 | **Auth** | ✅ Built-in | ⚠️ JWT-based | 🏆 Supabase |
 | **Row-Level Security** | ✅ Postgres RLS | ⚠️ Server-side validation | 🏆 Supabase |
-| **Bundle Size** | ~45KB | **49KB** (44KB lite) | 🤝 Similar |
+| **Bundle Size** | ~45KB | **~53KB** (~48KB lite) | 🤝 Similar |
 | **Pricing** | $0-$25/mo | Self-hosted | 🏆 SyncKit |
 | **Mobile-Ready** | ⚠️ No offline | ✅ Full offline | 🏆 SyncKit |
 | **Ecosystem** | ✅ Full-stack (Storage, Edge, etc.) | ⚠️ Sync only | 🏆 Supabase |
@@ -277,7 +277,7 @@ const { data, error } = await supabase
 **SyncKit:**
 ```typescript
 // Set (similar to insert)
-await sync.document<Todo>(todoId).set({
+await sync.document<Todo>(todoId).update({
   id: todoId,
   text: 'Buy milk',
   completed: false
@@ -469,11 +469,9 @@ const { data: { user } } = await supabase.auth.getUser()
 
 // Use SyncKit for offline-first data
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  auth: async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || ''
-  }
+  serverUrl: 'ws://localhost:8080',  // Optional - for remote sync
+  // Note: Built-in auth integration coming in future version
+  // For now, handle authentication at the server level
 })
 
 // Use Supabase Storage for files
@@ -540,7 +538,7 @@ describe('Supabase + SyncKit hybrid', () => {
     // Update should still work (offline)
     await todo.update({ completed: true })
 
-    const data = await todo.get()
+    const data = todo.get()
     expect(data.completed).toBe(true)
 
     // Reconnect and sync
@@ -561,11 +559,8 @@ describe('Supabase + SyncKit hybrid', () => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
     const sync = new SyncKit({
-      url: 'ws://localhost:8080',
-      auth: async () => {
-        const { data: { session } } = await supabase.auth.getSession()
-        return session?.access_token || ''
-      }
+      serverUrl: 'ws://localhost:8080',  // Optional - for remote sync
+      // Note: Auth integration coming in future version
     })
 
     // Simulate token expiration (1 hour)
@@ -594,11 +589,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 // Add SyncKit
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  auth: async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token || ''
-  }
+  serverUrl: 'ws://localhost:8080',  // Optional - for remote sync
+  // Note: Auth integration coming in future version
 })
 
 // Dual-write: Write to both Supabase and SyncKit

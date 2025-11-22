@@ -99,7 +99,7 @@ describe('Document operations', () => {
   test('should handle partial updates', async () => {
     const todo = sync.document<Todo>('todo-1')
 
-    await todo.set({
+    await todo.update({
       id: 'todo-1',
       text: 'Buy milk',
       completed: false,
@@ -109,7 +109,7 @@ describe('Document operations', () => {
     // Update only one field
     await todo.update({ priority: 'high' })
 
-    const data = await todo.get()
+    const data = todo.get()
     expect(data.priority).toBe('high')
     expect(data.text).toBe('Buy milk')
     expect(data.completed).toBe(false)
@@ -118,7 +118,7 @@ describe('Document operations', () => {
   test('should delete document', async () => {
     const todo = sync.document<Todo>('todo-1')
 
-    await todo.set({
+    await todo.update({
       id: 'todo-1',
       text: 'Buy milk',
       completed: false
@@ -146,7 +146,7 @@ describe('Document subscriptions', () => {
     })
 
     // Initial set
-    await todo.set({
+    await todo.update({
       id: 'todo-1',
       text: 'Buy milk',
       completed: false
@@ -201,7 +201,7 @@ describe('LWW conflict resolution', () => {
     const todoB = syncB.document<Todo>('todo-1')
 
     // Initial state
-    await todoA.set({
+    await todoA.update({
       id: 'todo-1',
       text: 'Original',
       completed: false
@@ -216,8 +216,8 @@ describe('LWW conflict resolution', () => {
     await syncDocuments(todoA, todoB)
 
     // Both should converge to Version B (later timestamp)
-    const dataA = await todoA.get()
-    const dataB = await todoB.get()
+    const dataA = todoA.get()
+    const dataB = todoB.get()
 
     expect(dataA.text).toBe('Version B')
     expect(dataB.text).toBe('Version B')
@@ -231,7 +231,7 @@ describe('LWW conflict resolution', () => {
     const todoB = syncB.document<Todo>('todo-1')
 
     // Initial state
-    await todoA.set({
+    await todoA.update({
       id: 'todo-1',
       text: 'Original',
       completed: false,
@@ -249,8 +249,8 @@ describe('LWW conflict resolution', () => {
     // Sync
     await syncDocuments(todoA, todoB)
 
-    const dataA = await todoA.get()
-    const dataB = await todoB.get()
+    const dataA = todoA.get()
+    const dataB = todoB.get()
 
     // text: B wins (later timestamp)
     expect(dataA.text).toBe('B text')
@@ -323,7 +323,8 @@ test('convergence property: all clients converge to same state', async () => {
               [op.operation.field]: op.operation.value
             })
           } else {
-            await doc.delete()
+            // Delete entire document (not a field)
+            await sync.deleteDocument(op.docId)
           }
 
           // Random delay to simulate network jitter
@@ -334,7 +335,7 @@ test('convergence property: all clients converge to same state', async () => {
         await syncAllClients(docs)
 
         // PROPERTY: All clients must have identical state
-        const states = await Promise.all(docs.map(d => d.get()))
+        const states = docs.map(d => d.get())
 
         for (let i = 1; i < states.length; i++) {
           expect(states[i]).toEqual(states[0])
@@ -375,8 +376,8 @@ test('commutativity property: operations can be applied in any order', async () 
         }
 
         // PROPERTY: Final state should be identical (commutativity)
-        const state1 = await doc1.get()
-        const state2 = await doc2.get()
+        const state1 = doc1.get()
+        const state2 = doc2.get()
 
         expect(state1).toEqual(state2)
       }
@@ -402,11 +403,11 @@ test('idempotence property: applying operation twice = applying once', async () 
 
         // Apply once
         await doc.update({ [operation.field]: operation.value })
-        const stateAfterOne = await doc.get()
+        const stateAfterOne = doc.get()
 
         // Apply again
         await doc.update({ [operation.field]: operation.value })
-        const stateAfterTwo = await doc.get()
+        const stateAfterTwo = doc.get()
 
         // PROPERTY: State should be identical
         expect(stateAfterTwo).toEqual(stateAfterOne)
@@ -426,7 +427,7 @@ test('idempotence property: applying operation twice = applying once', async () 
 describe('Offline/online transitions', () => {
   test('should queue operations when offline', async () => {
     const sync = new SyncKit({
-      url: 'ws://localhost:8080',
+      serverUrl: 'ws://localhost:8080',
       offlineQueue: true
     })
 
@@ -452,7 +453,7 @@ describe('Offline/online transitions', () => {
   })
 
   test('should handle rapid offline/online cycles', async () => {
-    const sync = new SyncKit({ url: 'ws://localhost:8080' })
+    const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
     const todo = sync.document<Todo>('todo-1')
 
     // Rapidly toggle connection
@@ -466,7 +467,7 @@ describe('Offline/online transitions', () => {
     // All updates should eventually sync
     await waitForQueueEmpty(sync)
 
-    const data = await todo.get()
+    const data = todo.get()
     expect(data.counter).toBe(9)
   })
 })
@@ -543,7 +544,7 @@ test('should handle 10% packet loss', async () => {
 ```typescript
 describe('Chaos engineering', () => {
   test('should survive random disconnections', async () => {
-    const sync = new SyncKit({ url: 'ws://localhost:8080' })
+    const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
     const todo = sync.document<Todo>('todo-1')
 
     // Randomly disconnect/reconnect during operations
@@ -567,20 +568,20 @@ describe('Chaos engineering', () => {
     await waitForQueueEmpty(sync)
 
     // PROPERTY: Final state should be consistent
-    const data = await todo.get()
+    const data = todo.get()
     expect(data.counter).toBe(99)
   })
 
   test('should handle network partition', async () => {
     // Simulate network partition: two groups can't communicate
     const groupA = [
-      new SyncKit({ url: 'ws://server-a:8080' }),
-      new SyncKit({ url: 'ws://server-a:8080' })
+      new SyncKit({ serverUrl: 'ws://server-a:8080' }),
+      new SyncKit({ serverUrl: 'ws://server-a:8080' })
     ]
 
     const groupB = [
-      new SyncKit({ url: 'ws://server-b:8080' }),
-      new SyncKit({ url: 'ws://server-b:8080' })
+      new SyncKit({ serverUrl: 'ws://server-b:8080' }),
+      new SyncKit({ serverUrl: 'ws://server-b:8080' })
     ]
 
     const docsA = groupA.map(s => s.document<Todo>('todo-1'))
@@ -723,7 +724,7 @@ test('should handle 100 concurrent clients', async () => {
   await Promise.all(
     clients.map((page, i) =>
       page.evaluate(async (index) => {
-        await sync.document(`todo-${index}`).set({
+        await sync.document(`todo-${index}`).update({
           id: `todo-${index}`,
           text: `Todo ${index}`,
           completed: false
@@ -750,7 +751,7 @@ test('should handle rapid updates', async () => {
   const sync = new SyncKit()
   const todo = sync.document<Todo>('todo-1')
 
-  await todo.set({
+  await todo.update({
     id: 'todo-1',
     text: 'Test',
     completed: false,
@@ -801,7 +802,7 @@ test('should sync state to React component', async () => {
   }
 
   // Initial setup
-  await sync.document<Todo>('todo-1').set({
+  await sync.document<Todo>('todo-1').update({
     id: 'todo-1',
     text: 'Buy milk',
     completed: false
@@ -889,7 +890,7 @@ jobs:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   logLevel: 'debug'
 })
 
@@ -903,7 +904,7 @@ const sync = new SyncKit({
 
 ```typescript
 // Get current document state
-const state = await todo.get()
+const state = todo.get()
 console.log('Current state:', state)
 
 // Get document metadata

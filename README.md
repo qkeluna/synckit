@@ -6,7 +6,7 @@
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/Dancode-188/synckit/ci.yml?branch=main)](https://github.com/Dancode-188/synckit/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Bundle Size](https://img.shields.io/badge/bundle%20size-49KB%20(44KB%20lite)-brightgreen)](https://bundlephobia.com)
+[![Bundle Size](https://img.shields.io/badge/bundle%20size-~53KB%20(~48KB%20lite)-brightgreen)](https://bundlephobia.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -50,18 +50,22 @@ True offline-first architecture—not just caching. Your app works perfectly on 
 
 ### 📦 **Enterprise Features, Startup Bundle**
 
-**49 KB gzipped** - Full-featured CRDT sync with all features included.
+**~53 KB gzipped total** - WASM-based sync engine with TypeScript SDK.
 
-All features in one bundle:
-- ✅ Offline-first sync
+Current features (v0.1.0):
+- ✅ Offline-first sync (LWW)
 - ✅ Real-time collaboration
-- ✅ Text CRDTs (Google Docs-style editing)
-- ✅ Counters, Sets (distributed data structures)
 - ✅ Network protocol support
+- ✅ IndexedDB persistence
+- ✅ Cross-tab sync
 
-**Size-critical apps?** Use Lite variant (44 KB, local-only)
+Coming in v0.2.0:
+- 🚧 Text CRDTs (character-level editing)
+- 🚧 Counters, Sets (distributed data structures)
 
-**3-7x smaller** than Firebase (150KB) and Automerge (350KB).
+**Size-critical apps?** Use Lite variant (~48 KB, local-only)
+
+**Competitive bundle size:** Larger than Yjs (~19KB pure JS), smaller than Automerge (~60-78KB).
 
 ### 🔓 **Your Data, Your Rules**
 Open source and self-hostable. No vendor lock-in, no surprise $2,000/month bills, complete data sovereignty.
@@ -69,7 +73,7 @@ Open source and self-hostable. No vendor lock-in, no surprise $2,000/month bills
 ### ⚡ **Fast by Design**
 - <1ms local operations (371ns single field update)
 - <100ms sync latency (10-50ms p95)
-- 49KB bundle (44KB lite option), sub-100KB total with React
+- ~53KB bundle (~48KB lite option), sub-200KB total with React
 
 ### 🛡️ **Data Integrity Guaranteed**
 - Zero data loss with automatic conflict resolution (Last-Write-Wins)
@@ -84,22 +88,22 @@ Open source and self-hostable. No vendor lock-in, no surprise $2,000/month bills
 |---------|:-------:|:--------:|:--------:|:---:|:---------:|
 | **True Offline-First** | ✅ Native | ⚠️ Cache only<br/>(40MB limit) | ❌ None<br/>([#357](https://github.com/supabase/supabase/issues/357) - 4+ years) | ✅ Full | ✅ Full |
 | **Works Without Server** | ✅ Yes | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
-| **Bundle Size** | **49KB** (44KB lite) | ~150KB | ~45KB | ~65KB | ~350KB |
-| **Text CRDT** | ✅ Included | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
-| **Counters/Sets** | ✅ Included | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
-| **Automatic Conflicts** | ✅ LWW + CRDT | ✅ LWW | ⚠️ Manual | ✅ CRDT | ✅ CRDT |
+| **Bundle Size (gzipped)** | **~53KB**<br/>(48KB lite) | ~150KB | ~45KB | **~19KB** | ~60-78KB |
+| **Text CRDT** | 🚧 v0.2.0 | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
+| **Counters/Sets** | 🚧 v0.2.0 | ❌ No | ❌ No | ✅ Yes | ✅ Yes |
+| **Automatic Conflicts** | ✅ LWW | ✅ LWW | ⚠️ Manual | ✅ CRDT | ✅ CRDT |
 | **Self-Hosted** | ✅ Yes | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes |
-| **Multi-Language Server** | ✅ TS/Py/Go/Rust | ❌ No | ⚠️ Postgres only | ❌ JS only | ❌ JS only |
+| **Multi-Language Server** | ✅ TS<br/>🚧 Py/Go/Rust | ❌ No | ⚠️ Postgres only | ❌ JS only | ❌ JS only |
 | **Pricing** | Free (self-host) | $25-$2,000+/mo | $0-$25/mo | Free | Free |
 | **TypeScript Support** | ✅ Native | ✅ Good | ✅ Good | ⚠️ Issues | ✅ Good |
 | **Learning Curve** | ✅ 5 minutes | ⚠️ Medium | ⚠️ Medium | ⚠️ Steep | ⚠️ Complex |
 | **Production Status** | ✅ v0.1.0 ready | ✅ Mature | ✅ Mature | ✅ Mature | ⚠️ Alpha/Beta |
 
 **TL;DR:**
-- **vs Firebase:** No vendor lock-in, true offline, predictable costs, 3x smaller
+- **vs Firebase:** No vendor lock-in, true offline, predictable costs
 - **vs Supabase:** Actually works offline (their [#1 issue](https://github.com/supabase/supabase/issues/357) for 4+ years)
-- **vs Yjs:** Simpler API, multi-language servers, better TypeScript support, 1.2x smaller
-- **vs Automerge:** 7x smaller bundle, 86x faster, production-ready
+- **vs Yjs:** WASM-based for multi-language server support, simpler API for structured data
+- **vs Automerge:** Smaller bundle, faster performance, production-ready
 
 **[See detailed migration guides →](docs/guides/)**
 
@@ -155,9 +159,9 @@ function TodoApp() {
 - ✅ Persists data in IndexedDB
 - ✅ Resolves conflicts automatically
 
-**Bundle:** SyncKit (49 KB) + React (130 KB) = **~179 KB total**
+**Bundle:** SyncKit (~53 KB) + React (~130 KB) = **~183 KB total**
 
-**Size-critical?** `import { SyncKit } from '@synckit/sdk/lite'` (44 KB, local-only)
+**Size-critical?** `import { SyncKit } from '@synckit/sdk/lite'` (~48 KB, local-only)
 
 **[Full tutorial (5 minutes) →](docs/guides/getting-started.md)**
 
@@ -172,18 +176,22 @@ function TodoApp() {
 - **🗄️ Local Persistence** - IndexedDB storage, unlimited capacity
 - **🔀 Conflict Resolution** - Automatic Last-Write-Wins (LWW) merge
 - **⚡ Fast Operations** - <1ms local updates, <100ms sync latency
-- **📦 Tiny Bundle** - 49KB gzipped (all features included)
+- **📦 Compact Bundle** - ~53KB gzipped (WASM + SDK)
 - **🔐 Secure** - JWT authentication, RBAC permissions
 
-### Advanced Features
+### Framework Integration
 
-- **✍️ Text CRDTs** - Collaborative text editing (Google Docs-style)
+- **⚛️ React Hooks** - `useSyncDocument`, `useSyncField`, `SyncProvider`
+- **🌐 TypeScript Server** - Bun + Hono reference implementation
+- **📦 Multi-Variant** - Default (~53KB) or Lite (~48KB) builds
+
+### Coming in v0.2.0
+
+- **✍️ Text CRDTs** - Collaborative text editing (character-level sync)
 - **🔢 Counters** - Conflict-free increment/decrement
 - **📋 Sets & Lists** - Observed-Remove Sets for collections
-- **🎨 Framework Support** - React hooks, Vue composables, Svelte stores
-- **🌐 Multi-Language Servers** - TypeScript, Python, Go, Rust
-- **📱 Mobile-Ready** - Optimized for React Native, Flutter
-- **🧪 Testing Infrastructure** - Property-based tests, chaos engineering
+- **🎨 Framework Adapters** - Vue composables, Svelte stores
+- **🌐 Multi-Language Servers** - Python, Go, Rust implementations
 
 ---
 
@@ -361,13 +369,13 @@ Need enterprise support?
 
 ## 📊 Benchmarks
 
-### Bundle Size
+### Bundle Size (gzipped)
 ```
-SyncKit (default):  49 KB ██████████
-SyncKit (lite):     44 KB ████████
-Yjs:                65 KB █████████████
-Firebase:          150 KB ████████████████████████████████
-Automerge:         350 KB ████████████████████████████████████████████████████████████
+Yjs:                ~19 KB ████
+SyncKit (lite):     ~48 KB ██████████
+SyncKit (default):  ~53 KB ███████████
+Automerge:       ~60-78 KB ████████████████
+Firebase:          ~150 KB ████████████████████████████████
 ```
 
 ### Sync Performance

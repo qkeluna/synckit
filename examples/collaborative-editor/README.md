@@ -2,8 +2,8 @@
 
 A production-ready collaborative Markdown and code editor built with SyncKit, React, and CodeMirror 6. This example demonstrates SyncKit's offline-first capabilities, real-time sync, and conflict-free collaboration.
 
-![Bundle Size](https://img.shields.io/badge/bundle-~330KB%20uncompressed%20|%20~119KB%20gzipped-success)
-![SyncKit](https://img.shields.io/badge/synckit-49KB-brightgreen)
+![Bundle Size](https://img.shields.io/badge/bundle-~330KB%20uncompressed%20|%20~123KB%20gzipped-success)
+![SyncKit](https://img.shields.io/badge/synckit-~53KB-brightgreen)
 ![React](https://img.shields.io/badge/react-18.2-blue)
 ![TypeScript](https://img.shields.io/badge/typescript-5.0-blue)
 
@@ -22,8 +22,8 @@ A production-ready collaborative Markdown and code editor built with SyncKit, Re
 
 ### Technical Highlights
 
-- **Optimized Bundle**: ~119KB gzipped (CodeMirror 6 + React + SyncKit)
-- **Full-Featured**: Uses SyncKit default (49 KB) - includes text CRDT + all features
+- **Optimized Bundle**: ~123KB gzipped (CodeMirror 6 + React + SyncKit)
+- **Full-Featured**: Uses SyncKit default (~53 KB total) - includes text CRDT + all features
 - **Type-Safe**: Full TypeScript support throughout
 - **Modern Stack**: React 18, Vite, CodeMirror 6, Zustand
 - **Production-Ready**: Comprehensive error handling, accessibility, and UX polish
@@ -93,10 +93,10 @@ Document content is managed by SyncKit, which handles:
 The editor uses SyncKit's React hooks for seamless sync:
 
 ```typescript
-import { useDocument } from '@synckit/react'
+import { useSyncDocument } from '@synckit/sdk/react'
 
-function Editor({ documentId, sync }) {
-  const [doc, setDoc] = useDocument<{ content: string }>(sync, documentId)
+function Editor({ documentId }) {
+  const [doc, { update }] = useSyncDocument<{ content: string }>(documentId)
 
   // Update document on editor change
   const handleChange = (newContent: string) => {
@@ -115,7 +115,7 @@ function Editor({ documentId, sync }) {
    const handleCreateDocument = () => {
      const id = `doc-${Date.now()}`
      const doc = sync.document<{ content: string }>(id)
-     doc.set({ content: '# New Document\n\nStart typing...' })
+     doc.update({ content: '# New Document\n\nStart typing...' })
      addDocument({ id, title: 'Untitled.md', ... })
    }
    ```
@@ -232,7 +232,7 @@ This collaborative editor needs **real-time text editing** with multiple users t
 - ✅ Conflict-free convergence (no lost edits)
 - ✅ Offline-first architecture
 - ✅ Real-time collaboration
-- ✅ All features in 49 KB
+- ✅ All features in ~53 KB total
 
 **Full-featured collaborative editing** in a lightweight package.
 
@@ -243,27 +243,27 @@ Component                    Uncompressed    Gzipped
 ────────────────────────────────────────────────────
 CodeMirror 6                     410 KB      124 KB
 React 18 + ReactDOM              142 KB       45 KB
-SyncKit (WASM + SDK)              97 KB       49 KB
+SyncKit (WASM + SDK)              97 KB       53 KB
 Zustand                            9 KB        3 KB
 Application Code                  22 KB        8 KB
 ────────────────────────────────────────────────────
-Total                           ~330 KB     ~119 KB
+Total                           ~330 KB     ~123 KB
 ```
 
 ### Size-Critical Apps?
 
-**Need smaller bundle?** Use SyncKit Lite (44 KB):
+**Need smaller bundle?** Use SyncKit Lite (~48 KB):
 ```typescript
-import { SyncKit } from '@synckit/sdk/lite'  // Local-only, 44 KB
+import { SyncKit } from '@synckit/sdk/lite'  // Local-only, ~48 KB
 ```
 
-**Trade-off:** No server sync or Text CRDT. For collaborative editors, the default variant (49 KB) is essential.
+**Trade-off:** No server sync. For collaborative editors, the default variant (~53 KB) is recommended.
 
 ### Why These Choices?
 
-- **CodeMirror 6** (124KB) vs Monaco (2MB+): 94% smaller, same functionality
-- **Zustand** (3KB) vs Redux (20KB+): 85% smaller, simpler API
-- **SyncKit** (49KB): Full CRDT collaboration, 1.3x smaller than Yjs (65 KB)
+- **CodeMirror 6** (~124KB) vs Monaco (2MB+): 94% smaller, same functionality
+- **Zustand** (~3KB) vs Redux (20KB+): 85% smaller, simpler API
+- **SyncKit** (~53KB): Document-level sync with WASM portability
 
 ## Extending This Example
 

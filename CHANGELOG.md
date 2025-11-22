@@ -93,7 +93,7 @@ This release brings SyncKit from concept to production-ready sync engine with co
 
 - **Local Operations:** <1ms (371ns single field update, 74µs document merge)
 - **Sync Latency:** <100ms p95 (achieving 10-50ms in practice)
-- **Bundle Size:** 49KB gzipped (default variant with all features), 44KB gzipped (lite variant, local-only)
+- **Bundle Size:** ~53KB gzipped total (49KB WASM + ~4KB SDK, default variant with all features), ~48KB gzipped total (44KB WASM + ~4KB SDK, lite variant, local-only)
 - **Memory Usage:** ~3MB for 10K documents
 - **Test Coverage:** 385 comprehensive tests across all layers
 

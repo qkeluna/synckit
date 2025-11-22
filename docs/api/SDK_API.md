@@ -1,8 +1,39 @@
 # SyncKit SDK API Design
 
-**Version:** 0.1.0  
-**Status:** Phase 1 - API Design  
-**Last Updated:** November 11, 2025
+**Version:** 0.1.0
+**Last Updated:** November 22, 2025
+
+---
+
+## ⚠️ v0.1.0 - IMPLEMENTATION STATUS
+
+**SyncKit v0.1.0 is a LOCAL-FIRST library.** Network sync features are documented but **NOT YET IMPLEMENTED**.
+
+### ✅ Implemented in v0.1.0
+
+**Core SDK (`@synckit/sdk`):**
+- ✅ `SyncKit` class with storage
+- ✅ `SyncDocument<T>` with LWW-CRDT
+- ✅ Methods: `get()`, `set()`, `update()`, `delete()`, `subscribe()`, `merge()`
+- ✅ IndexedDB & Memory storage adapters
+
+**React (`@synckit/sdk/react`):**
+- ✅ `SyncProvider`, `useSyncKit()`, `useSyncDocument()`
+
+**Config Options:**
+- ✅ `storage`, `name`, `clientId`
+- ⚠️ `serverUrl` (accepted but not used yet)
+
+### ❌ NOT Implemented Yet
+
+- ❌ Network/WebSocket sync
+- ❌ `connect()`, `disconnect()`, `reconnect()`
+- ❌ `Text`, `Counter`, `Set` CRDTs
+- ❌ `onConflict()` callbacks
+- ❌ `auth`, `offlineQueue`, `syncStrategy` config
+- ❌ Vue/Svelte adapters
+
+**Current use:** Offline-only apps. Network sync coming soon.
 
 ---
 
@@ -41,18 +72,17 @@ const sync = new SyncKit()
 
 // With server URL
 const sync = new SyncKit({
-  url: 'ws://localhost:8080'
+  serverUrl: 'ws://localhost:8080'
 })
 
-// Full configuration
+// Full configuration (many options planned for future versions)
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  auth: () => getAuthToken(),  // Async function returning JWT
-  storage: 'indexeddb',        // 'indexeddb' | 'opfs' | 'sqlite' | 'memory'
-  offlineQueue: true,          // Enable offline operation queue
-  reconnect: true,             // Auto-reconnect on disconnect
-  reconnectDelay: 1000,        // Initial reconnect delay (ms)
-  maxReconnectDelay: 30000,    // Max reconnect delay (ms)
+  serverUrl: 'ws://localhost:8080',  // Accepted in v0.1.0 but not yet used
+  storage: 'indexeddb',              // ✅ WORKS: 'indexeddb' | 'memory'
+  name: 'my-app',                    // ✅ WORKS: Storage namespace
+  clientId: 'user-123',              // ✅ WORKS: Auto-generated if omitted
+  // Future options (not yet implemented):
+  // auth, offlineQueue, reconnect, reconnectDelay, maxReconnectDelay
 })
 ```
 
@@ -410,28 +440,36 @@ class CRDTSet<T> {
 
 ## React Hooks
 
-**Package:** `@synckit/react`
+**Package:** `@synckit/sdk/react`
 
-### useDocument
+### useSyncDocument
 
 ```typescript
-import { useDocument } from '@synckit/react'
+import { useSyncDocument, SyncProvider } from '@synckit/sdk/react'
+
+// Wrap your app with SyncProvider
+function App() {
+  const sync = new SyncKit({ storage: 'indexeddb' })
+
+  return (
+    <SyncProvider synckit={sync}>
+      <TodoItem id="todo-1" />
+    </SyncProvider>
+  )
+}
 
 function TodoItem({ id }: { id: string }) {
-  const [todo, updateTodo] = useDocument<Todo>(sync, id)
-  
-  if (!todo) {
-    return <div>Loading...</div>
-  }
-  
+  // Hook gets SyncKit from context, takes only id parameter
+  const [todo, { update }, doc] = useSyncDocument<Todo>(id)
+
   return (
     <div>
       <input
         type="checkbox"
-        checked={todo.completed}
-        onChange={(e) => updateTodo({ completed: e.target.checked })}
+        checked={todo.completed || false}
+        onChange={(e) => update({ completed: e.target.checked })}
       />
-      <span>{todo.text}</span>
+      <span>{todo.text || ''}</span>
     </div>
   )
 }
@@ -440,27 +478,26 @@ function TodoItem({ id }: { id: string }) {
 ### Hook API
 
 ```typescript
-// Basic usage
-function useDocument<T>(
-  sync: SyncKit,
-  id: string
-): [T | null, (changes: Partial<T>) => Promise<void>]
-
-// With options
-function useDocument<T>(
-  sync: SyncKit,
+function useSyncDocument<T>(
   id: string,
-  options?: {
-    suspense?: boolean  // Use React Suspense
-    initialValue?: T    // Value while loading
-  }
-): [T | null, (changes: Partial<T>) => Promise<void>]
+  options?: { autoInit?: boolean }
+): [
+  T,  // Current document data
+  {
+    set: <K extends keyof T>(field: K, value: T[K]) => Promise<void>
+    update: (updates: Partial<T>) => Promise<void>
+    delete: <K extends keyof T>(field: K) => Promise<void>
+  },
+  SyncDocument<T>  // Raw document instance
+]
+
+// Note: Requires <SyncProvider> wrapper to access SyncKit instance
 ```
 
 ### useText
 
 ```typescript
-import { useText } from '@synckit/react'
+import { useText } from '@synckit/sdk/react'
 
 function NoteEditor({ id }: { id: string }) {
   const [text, { insert, delete: del, append }] = useText(sync, id)
@@ -481,7 +518,7 @@ function NoteEditor({ id }: { id: string }) {
 ### useCounter
 
 ```typescript
-import { useCounter } from '@synckit/react'
+import { useCounter } from '@synckit/sdk/react'
 
 function LikeButton({ postId }: { postId: string }) {
   const [likes, { increment, decrement }] = useCounter(sync, `likes-${postId}`)
@@ -497,7 +534,7 @@ function LikeButton({ postId }: { postId: string }) {
 ### useSet
 
 ```typescript
-import { useSet } from '@synckit/react'
+import { useSet } from '@synckit/sdk/react'
 
 function TagList({ docId }: { docId: string }) {
   const [tags, { add, remove }] = useSet<string>(sync, `tags-${docId}`)
@@ -518,147 +555,35 @@ function TagList({ docId }: { docId: string }) {
 
 ---
 
-## Vue Composables
+## Vue Composables *(Coming Soon)*
 
-**Package:** `@synckit/vue`
+**Status:** Not yet implemented in v0.1.0
 
-### useDocument
+Vue 3 composables (`@synckit/vue`) are planned for a future release. Currently, only React hooks are available.
 
-```typescript
-import { useDocument } from '@synckit/vue'
+**Planned API:**
+- `useDocument` - Document composable
+- `useText` - Text CRDT composable
+- `useCounter` - Counter CRDT composable
+- `useSet` - Set CRDT composable
 
-export default {
-  setup() {
-    const { data: todo, update } = useDocument<Todo>(sync, 'todo-123')
-    
-    const toggleComplete = () => {
-      update({ completed: !todo.value.completed })
-    }
-    
-    return { todo, toggleComplete }
-  }
-}
-```
-
-### Composable API
-
-```typescript
-// Document composable
-function useDocument<T>(
-  sync: SyncKit,
-  id: Ref<string> | string
-): {
-  data: Ref<T | null>
-  update: (changes: Partial<T>) => Promise<void>
-  loading: Ref<boolean>
-  error: Ref<Error | null>
-}
-
-// Text composable
-function useText(
-  sync: SyncKit,
-  id: Ref<string> | string
-): {
-  text: Ref<string>
-  insert: (pos: number, text: string) => Promise<void>
-  delete: (start: number, end: number) => Promise<void>
-  append: (text: string) => Promise<void>
-}
-
-// Counter composable
-function useCounter(
-  sync: SyncKit,
-  id: Ref<string> | string
-): {
-  count: Ref<number>
-  increment: (delta?: number) => Promise<void>
-  decrement: (delta?: number) => Promise<void>
-}
-
-// Set composable
-function useSet<T>(
-  sync: SyncKit,
-  id: Ref<string> | string
-): {
-  items: Ref<Set<T>>
-  add: (item: T) => Promise<void>
-  remove: (item: T) => Promise<void>
-  has: (item: T) => boolean
-}
-```
+**Workaround for now:** Use the core SDK directly in Vue 3 with `ref()` and `watch()` for reactivity.
 
 ---
 
-## Svelte Stores
+## Svelte Stores *(Coming Soon)*
 
-**Package:** `@synckit/svelte`
+**Status:** Not yet implemented in v0.1.0
 
-### documentStore
+Svelte stores (`@synckit/svelte`) are planned for a future release. Currently, only React hooks are available.
 
-```typescript
-import { documentStore } from '@synckit/svelte'
+**Planned API:**
+- `documentStore` - Document store
+- `textStore` - Text CRDT store
+- `counterStore` - Counter CRDT store
+- `setStore` - Set CRDT store
 
-// Create store
-const todo = documentStore<Todo>(sync, 'todo-123')
-
-// Use in component
-<script>
-  import { todo } from './stores'
-  
-  function toggleComplete() {
-    $todo.completed = !$todo.completed
-    todo.save()
-  }
-</script>
-
-<input
-  type="checkbox"
-  checked={$todo.completed}
-  on:change={toggleComplete}
-/>
-<span>{$todo.text}</span>
-```
-
-### Store API
-
-```typescript
-// Document store
-function documentStore<T>(
-  sync: SyncKit,
-  id: string
-): Writable<T> & {
-  save: () => Promise<void>
-  loading: Readable<boolean>
-  error: Readable<Error | null>
-}
-
-// Text store
-function textStore(
-  sync: SyncKit,
-  id: string
-): Writable<string> & {
-  insert: (pos: number, text: string) => Promise<void>
-  delete: (start: number, end: number) => Promise<void>
-}
-
-// Counter store
-function counterStore(
-  sync: SyncKit,
-  id: string
-): Readable<number> & {
-  increment: (delta?: number) => Promise<void>
-  decrement: (delta?: number) => Promise<void>
-}
-
-// Set store
-function setStore<T>(
-  sync: SyncKit,
-  id: string
-): Readable<Set<T>> & {
-  add: (item: T) => Promise<void>
-  remove: (item: T) => Promise<void>
-}
-```
+**Workaround for now:** Use the core SDK directly in Svelte with `$:` reactivity or Svelte stores wrapping SyncKit documents.
 
 ---
 
@@ -751,8 +676,8 @@ interface Todo {
 
 // Initialize
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  auth: () => localStorage.getItem('token') || ''
+  serverUrl: 'ws://localhost:8080',  // For future network sync
+  // Note: auth config not yet implemented in v0.1.0
 })
 
 // Get all todos (future - query API)
@@ -769,7 +694,7 @@ todos.subscribe((allTodos) => {
 async function addTodo(text: string) {
   const id = generateId()
   const todo = sync.document<Todo>(id)
-  await todo.set({
+  await todo.update({
     id,
     text,
     completed: false
@@ -779,7 +704,7 @@ async function addTodo(text: string) {
 // Toggle todo
 async function toggleTodo(id: string) {
   const todo = sync.document<Todo>(id)
-  const current = await todo.get()
+  const current = todo.get()
   await todo.update({ completed: !current.completed })
 }
 ```
@@ -789,7 +714,7 @@ async function toggleTodo(id: string) {
 ```typescript
 import { SyncKit } from '@synckit/sdk'
 
-const sync = new SyncKit({ url: 'ws://localhost:8080' })
+const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
 const noteText = sync.text('shared-note')
 
 // Sync with editor
@@ -804,7 +729,7 @@ noteText.subscribe((content) => {
 editor.addEventListener('input', async () => {
   // Simple approach: replace entire content
   // Advanced: compute diff and send delta
-  await noteText.replace(0, noteText.length(), editor.value)
+  await noteText.replace(0, await noteText.length(), editor.value)
 })
 ```
 

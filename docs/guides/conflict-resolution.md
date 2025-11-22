@@ -1,5 +1,24 @@
 # Conflict Resolution in SyncKit
 
+**⚠️ IMPORTANT - v0.1.0 STATUS:**
+
+This guide describes SyncKit's conflict resolution architecture. However, **network sync features are not yet fully implemented in v0.1.0**.
+
+**What works now:**
+- ✅ LWW (Last-Write-Wins) CRDT conflict resolution
+- ✅ Local-first data storage
+- ✅ Manual document merging via `doc.merge(otherDoc)`
+
+**Not yet implemented (coming in future version):**
+- ❌ WebSocket connectivity (`connect`, `disconnect`, `reconnect` methods)
+- ❌ Conflict detection callbacks (`onConflict` method)
+- ❌ Automatic real-time sync across devices
+- ❌ Network-related config options (`offlineQueue`, `syncStrategy`, etc.)
+
+**How to use this guide:** Examples showing network features are marked for reference/planning purposes. Focus on the CRDT concepts and local merging capabilities available now.
+
+---
+
 Learn how SyncKit handles conflicts automatically, and when to implement custom resolution logic.
 
 ---
@@ -205,7 +224,7 @@ By default, SyncKit handles conflicts automatically with LWW:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   conflictResolution: 'lww'  // Default
 })
 
@@ -448,8 +467,8 @@ async function testConflict() {
   await syncB.reconnect()
 
   // Both should converge to same value (LWW)
-  const finalA = await taskA.get()
-  const finalB = await taskB.get()
+  const finalA = taskA.get()
+  const finalB = taskB.get()
 
   console.assert(finalA.title === finalB.title, 'Conflict resolution failed')
 }
@@ -512,7 +531,7 @@ For more precise conflict detection, SyncKit will support **vector clocks** in v
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   conflictResolution: 'vector-clock'  // v0.2.0
 })
 
@@ -570,7 +589,7 @@ interface Task {
 }
 
 async function updateTask(task: Task, updates: Partial<Task>) {
-  const current = await sync.document<Task>(task.id).get()
+  const current = sync.document<Task>(task.id).get()
 
   if (current.version !== task.version) {
     throw new Error('Task was modified by another user. Please refresh.')

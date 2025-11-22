@@ -1,6 +1,6 @@
 # Choosing the Right SyncKit Variant
 
-SyncKit ships with four optimized variants to balance bundle size with functionality. This guide helps you choose the right one for your use case.
+SyncKit ships with two optimized variants to balance bundle size with functionality. This guide helps you choose the right one for your use case.
 
 ---
 
@@ -9,42 +9,30 @@ SyncKit ships with four optimized variants to balance bundle size with functiona
 ```
 Start here
 │
-├─ Do you need network synchronization with protocol support?
-│  │
-│  ├─ NO → Use Core-Lite variant
-│  │       ✅ 43.8 KB gzipped (smallest)
-│  │       ✅ Local-only sync
-│  │       ✅ Perfect for offline-first apps without backend
-│  │
-│  └─ YES → Do you need collaborative text editing (Google Docs style)?
-│     │
-│     ├─ NO → Use Core variant
-│     │        ✅ 49.0 KB gzipped
-│     │        ✅ Core + Network Protocol
-│     │        ✅ Perfect for most apps (80% of use cases)
-│     │
-│     └─ YES → Do you also need counters, sets, or other CRDTs?
-│        │
-│        ├─ NO → Use Text variant
-│        │        ✅ 48.9 KB gzipped
-│        │        ✅ Core + Text CRDT
-│        │        ✅ Collaborative editors, notes
-│        │
-│        └─ YES → Use Full variant
-│                 ✅ 48.9 KB gzipped
-│                 ✅ All CRDTs included
-│                 ✅ Whiteboards, design tools, advanced apps
+└─ Do you need network synchronization with a server?
+   │
+   ├─ YES → Use Default variant
+   │         ✅ 49 KB gzipped
+   │         ✅ Server sync with WebSocket
+   │         ✅ Protocol support (delta sync)
+   │         ✅ Recommended for most apps (95% of use cases)
+   │
+   └─ NO  → Use Lite variant
+             ✅ 44 KB gzipped (smallest)
+             ✅ Local-only sync
+             ✅ Perfect for offline-first apps without backend
+             ✅ 5 KB smaller than Default
 ```
 
 ---
 
 ## 📦 Variant Comparison
 
-### Core-Lite Variant - 43.8 KB gzipped (Smallest)
+### Default Variant - 49 KB gzipped (Recommended)
 
 **Import:**
 ```typescript
-import { SyncKit } from '@synckit/sdk/core-lite'
+import { SyncKit } from '@synckit/sdk'
 ```
 
 **Includes:**
@@ -53,9 +41,86 @@ import { SyncKit } from '@synckit/sdk/core-lite'
 - ✅ Conflict resolution (automatic)
 - ✅ Offline-first (works without network)
 - ✅ IndexedDB persistence
-- ❌ Network protocol (prost/protobuf)
-- ❌ DateTime serialization (chrono)
-- ❌ Delta computation (WasmDelta)
+- ✅ Network protocol (Protocol Buffers)
+- ✅ Delta computation (efficient sync)
+- ✅ Server synchronization (WebSocket)
+- ✅ DateTime serialization
+- ❌ Text CRDT *(coming in v0.2.0)*
+- ❌ Counters *(coming in v0.2.0)*
+- ❌ Sets *(coming in v0.2.0)*
+
+**Perfect for:**
+- Todo applications with server sync
+- CRM systems
+- Project management tools
+- Dashboards and admin panels
+- E-commerce applications
+- Social media apps (posts, profiles)
+- Settings sync across devices
+- Form data with server sync
+- **Any app that syncs structured data (JSON objects) with a server**
+
+**Real-world examples:**
+- [Todo App](../../examples/todo-app/) - Simple CRUD with filters
+- [Project Management App](../../examples/project-management/) - Kanban board with drag-and-drop
+- [Collaborative Editor](../../examples/collaborative-editor/) - Real-time document editing
+
+**Code example:**
+```typescript
+import { SyncKit } from '@synckit/sdk'
+
+const sync = new SyncKit({
+  serverUrl: 'ws://localhost:8080',
+  storage: 'indexeddb'
+})
+
+await sync.init()
+
+// Create a document
+const task = sync.document<Task>('task-123')
+await task.update({
+  title: 'Build feature',
+  status: 'in-progress',
+  assignee: 'alice@example.com',
+  dueDate: new Date('2025-12-01')
+})
+
+// Syncs automatically to server
+// Works offline, queues operations
+// Resolves conflicts automatically
+```
+
+**When to use:**
+- ✅ You're building a CRUD app with server sync
+- ✅ Data is structured (objects, arrays, primitives)
+- ✅ You want network synchronization
+- ✅ You need cross-device sync
+- ✅ **This is the recommended default for 95% of applications**
+
+**When NOT to use:**
+- ❌ You don't need server sync → Use Lite variant (save 5 KB)
+
+**Bundle size:** 49 KB (WASM) + ~4 KB (SDK) = **~53 KB total**
+
+---
+
+### Lite Variant - 44 KB gzipped (Smallest)
+
+**Import:**
+```typescript
+import { SyncKit } from '@synckit/sdk/lite'
+```
+
+**Includes:**
+- ✅ Document sync (Last-Write-Wins)
+- ✅ Vector clocks (causality tracking)
+- ✅ Conflict resolution (automatic)
+- ✅ Offline-first (works without network)
+- ✅ IndexedDB persistence
+- ❌ Network protocol (Protocol Buffers)
+- ❌ Delta computation
+- ❌ Server synchronization
+- ❌ DateTime serialization
 - ❌ Text CRDT
 - ❌ Counters
 - ❌ Sets
@@ -69,17 +134,21 @@ import { SyncKit } from '@synckit/sdk/core-lite'
 - Apps where bundle size is critical
 
 **Real-world examples:**
-- Todo apps with local storage
+- Todo apps with local storage only
 - Note-taking apps (without real-time collaboration)
 - Settings/preferences management
-- Form data persistence
+- Form data persistence (local draft)
 - Shopping carts (local-only)
 
 **Code example:**
 ```typescript
-import { SyncKit } from '@synckit/sdk/core-lite'
+import { SyncKit } from '@synckit/sdk/lite'
 
-const sync = new SyncKit({ storage: 'indexeddb' })
+const sync = new SyncKit({
+  storage: 'indexeddb'
+})
+
+await sync.init()
 
 // Create a document
 const todo = sync.document<Todo>('todo-123')
@@ -100,233 +169,12 @@ await todo.update({
 - ✅ Building offline-first without backend
 
 **When NOT to use:**
-- ❌ You need server sync → Use Core variant
-- ❌ You need collaborative text editing → Use Text variant
-- ❌ You need advanced CRDTs → Use Full variant
+- ❌ You need server sync → Use Default variant
+- ❌ You need cross-device synchronization → Use Default variant
 
-**Bundle size savings:** 5.2 KB smaller than Core (10.6% reduction)
+**Bundle size:** 44 KB (WASM) + ~4 KB (SDK) = **~48 KB total**
 
----
-
-### Core Variant - 49.0 KB gzipped (Default, Recommended)
-
-**Import:**
-```typescript
-import { SyncKit } from '@synckit/sdk/core'
-// or default:
-import { SyncKit } from '@synckit/sdk'
-```
-
-**Includes:**
-- ✅ Everything in Core-Lite
-- ✅ Network protocol (protobuf serialization)
-- ✅ DateTime handling (chrono)
-- ✅ Delta computation (WasmDelta)
-- ✅ Server synchronization
-- ❌ Text CRDT
-- ❌ Counters
-- ❌ Sets
-
-**Perfect for:**
-- Todo applications
-- CRM systems
-- Project management tools
-- Dashboards and admin panels
-- E-commerce applications
-- Social media apps (posts, profiles)
-- Settings sync across devices
-- Form data with server sync
-- **Any app that syncs structured data (JSON objects) with a server**
-
-**Real-world examples:**
-- [Project Management App](../../examples/project-management/) - Kanban board
-- Trello-like task management
-- Notion-like databases (without text editing)
-- Asana-like project tracking
-- Airtable-like data management
-
-**Code example:**
-```typescript
-import { SyncKit } from '@synckit/sdk/core'
-
-const sync = new SyncKit({
-  serverUrl: 'https://api.example.com/sync',
-  storage: 'indexeddb'
-})
-
-// Create a document
-const task = sync.document<Task>('task-123')
-await task.update({
-  title: 'Build feature',
-  status: 'in-progress',
-  assignee: 'alice@example.com',
-  dueDate: new Date('2025-12-01')
-})
-
-// Syncs automatically to server
-// Works offline, queues operations
-// Resolves conflicts automatically
-```
-
-**When to use:**
-- ✅ You're building a CRUD app with server sync
-- ✅ Data is structured (objects, arrays, primitives)
-- ✅ You want network synchronization
-- ✅ You don't need collaborative text editing
-- ✅ **This is the recommended default for 80% of applications**
-
-**When NOT to use:**
-- ❌ You don't need server sync → Use Core-Lite (save 5 KB)
-- ❌ You need Google Docs-style text editing → Use Text variant
-- ❌ You need distributed counters/sets → Use Full variant
-
----
-
-### Text Variant - 48.9 KB gzipped
-
-**Import:**
-```typescript
-import { SyncKit } from '@synckit/sdk/text'
-```
-
-**Includes:**
-- ✅ Everything in Core
-- ✅ Text CRDT (YATA algorithm)
-- ✅ Character-level conflict resolution
-- ✅ Real-time collaborative editing
-- ❌ Counters
-- ❌ Sets
-- ❌ Fractional Index
-
-**Perfect for:**
-- Collaborative text editors
-- Note-taking applications
-- Documentation tools
-- Content management systems
-- Markdown editors
-- Code editors (collaborative coding)
-- Comment sections (rich text)
-- Chat applications with message editing
-
-**Real-world examples:**
-- [Collaborative Editor](../../examples/collaborative-editor/) - CodeMirror integration
-- Google Docs-like apps
-- Notion-like rich text
-- Obsidian-like markdown editors
-- Slack-like message editing
-- GitHub-like code review comments
-
-**Code example:**
-```typescript
-import { SyncKit } from '@synckit/sdk/text'
-
-const sync = new SyncKit({ serverUrl: 'https://api.example.com/sync' })
-
-// Create a text document
-const doc = sync.text('document-123')
-
-// Insert text at position 0
-await doc.insert(0, 'Hello World')
-
-// Delete characters
-await doc.delete(6, 5) // Removes "World"
-
-// Insert at position 6
-await doc.insert(6, 'SyncKit')
-// Result: "Hello SyncKit"
-
-// Subscribe to changes from other users
-doc.subscribe(content => {
-  editor.setValue(content)
-})
-
-// Multiple users can edit simultaneously
-// All edits converge to the same result
-// No conflicts, no lost edits
-```
-
-**When to use:**
-- ✅ You need collaborative text editing
-- ✅ Multiple users typing in the same document
-- ✅ Rich text or markdown editors
-- ✅ Comment threads with editing
-- ✅ Real-time document collaboration
-
-**When NOT to use:**
-- ❌ You only sync structured data → Use Core variant (same size, simpler API)
-- ❌ Text is simple single-line inputs → Use Core variant (overkill for simple text)
-- ❌ You don't have collaborative editing → Use Core variant
-
-**Interesting insight:** Text variant is actually 0.1 KB **smaller** than Core variant due to how gzip compression works. The CRDT code is highly compressible.
-
----
-
-### Full Variant - 48.9 KB gzipped
-
-**Import:**
-```typescript
-import { SyncKit } from '@synckit/sdk/full'
-```
-
-**Includes:**
-- ✅ Everything in Core
-- ✅ Text CRDT
-- ✅ PN-Counter (distributed counter)
-- ✅ OR-Set (observed-remove set)
-- ✅ Fractional Index (list positioning)
-
-**Perfect for:**
-- Whiteboards (shapes, positions)
-- Design tools (layers, elements)
-- Collaborative canvases
-- Social features (likes, votes, followers)
-- Tag management
-- Collaborative lists with add/remove
-- Complex multi-user applications
-- Apps needing all CRDT types
-
-**Real-world examples:**
-- Miro-like whiteboards
-- Figma-like design tools
-- Instagram-like posts (with counters for likes)
-- Tag systems with collaborative editing
-- Collaborative task lists with reordering
-
-**Code example:**
-```typescript
-import { SyncKit } from '@synckit/sdk/full'
-
-const sync = new SyncKit({ serverUrl: 'https://api.example.com/sync' })
-
-// Distributed counter (never conflicts)
-const likes = sync.counter('post-123-likes')
-await likes.increment()  // Client 1: +1
-await likes.increment()  // Client 2: +1
-// Result: 2 (both increments preserved, no conflicts)
-
-// Observed-remove set
-const tags = sync.set<string>('post-123-tags')
-await tags.add('javascript')
-await tags.add('typescript')
-await tags.remove('javascript')
-// Result: Set { 'typescript' }
-
-// All users see the same state
-// No conflicts, convergence guaranteed
-```
-
-**When to use:**
-- ✅ You need distributed counters (likes, votes, view counts)
-- ✅ You need collaborative sets (tags, members, permissions)
-- ✅ You're building a whiteboard or design tool
-- ✅ You need all CRDT types
-- ✅ Complex collaboration patterns
-
-**When NOT to use:**
-- ❌ You don't need these advanced features → Use Core or Text variant
-- ❌ Bundle size is critical → Use Core-Lite or Core variant
-
-**Note:** Full variant is the same size as Text variant (48.9 KB) because CRDT code is minimal and highly compressible.
+**Bundle size savings:** 5 KB smaller than Default (10% reduction)
 
 ---
 
@@ -335,14 +183,11 @@ await tags.remove('javascript')
 Switching between variants is seamless - just change the import:
 
 ```typescript
-// Before (core-lite)
-import { SyncKit } from '@synckit/sdk/core-lite'
+// Before (lite)
+import { SyncKit } from '@synckit/sdk/lite'
 
 // After (need server sync)
-import { SyncKit } from '@synckit/sdk/core'
-
-// After (need text editing)
-import { SyncKit } from '@synckit/sdk/text'
+import { SyncKit } from '@synckit/sdk'
 
 // All core APIs remain exactly the same!
 // No breaking changes, just additional features available
@@ -352,16 +197,16 @@ import { SyncKit } from '@synckit/sdk/text'
 
 ```typescript
 // ❌ BAD: Imports from multiple variants (duplicates WASM)
-import { SyncKit } from '@synckit/sdk/core'
-import { TextCRDT } from '@synckit/sdk/text'  // Imports separate WASM!
+import { SyncKit } from '@synckit/sdk'
+import { SyncDocument } from '@synckit/sdk/lite'  // Imports separate WASM!
 
 // ✅ GOOD: Import everything from one variant
-import { SyncKit, TextCRDT } from '@synckit/sdk/text'
+import { SyncKit, SyncDocument } from '@synckit/sdk'
 ```
 
 **Migration is non-breaking:**
-- Data format is the same across all variants
-- A document created with Core-Lite can be opened with Core, Text, or Full
+- Data format is the same across both variants
+- A document created with Lite can be opened with Default
 - You can upgrade anytime without data migration
 
 ---
@@ -372,79 +217,69 @@ Understanding the size trade-offs:
 
 | Variant | WASM (gzipped) | SDK (gzipped) | Total | What You Get |
 |---------|----------------|---------------|-------|--------------|
-| core-lite | 43.8 KB | ~4 KB | **~48 KB** | Local-only sync |
-| core | 49.0 KB | ~4 KB | **~53 KB** | + Server sync (default) |
-| text | 48.9 KB | ~4 KB | **~53 KB** | + Text CRDT |
-| full | 48.9 KB | ~4 KB | **~53 KB** | + All CRDTs |
+| Lite | 44 KB | ~4 KB | **~48 KB** | Local-only sync |
+| Default | 49 KB | ~4 KB | **~53 KB** | + Server sync (recommended) |
 
 **Key insights:**
 1. SDK overhead is minimal (~4 KB). WASM dominates bundle size.
-2. Core-Lite to Core: +5.2 KB for network protocol support
-3. Core to Text/Full: Actually 0.1 KB **smaller** (gzip compression magic)
-4. CRDTs add virtually no size due to code compression
+2. Lite to Default: +5 KB for network protocol support
+3. For most apps, the 5 KB is worth it for server sync capability
 
-**Comparison to alternatives:**
+**Comparison to alternatives (gzipped):**
 
-| Library | Size | Notes |
-|---------|------|-------|
-| **SyncKit Core-Lite** | **43.8 KB** | Smallest, local-only |
-| **SyncKit Core** | **49.0 KB** | Recommended default |
-| **SyncKit Text** | **48.9 KB** | Text CRDT included |
-| **SyncKit Full** | **48.9 KB** | All features |
-| Yjs | 65 KB | Text CRDT only |
-| Firebase SDK | 150 KB | Plus server dependency |
-| Automerge | 350 KB | Full CRDT suite |
+| Library | Size | Type | Notes |
+|---------|------|------|-------|
+| **Yjs** | **~19 KB** | Pure JS | Text CRDT, lightest |
+| **SyncKit Lite** | **~48 KB** | WASM + JS | Local-only |
+| **SyncKit Default** | **~53 KB** | WASM + JS | Recommended |
+| **Automerge** | **~60-78 KB** | WASM + JS | Full CRDT suite |
+| **Firebase SDK** | **~150 KB** | Pure JS | Plus server dependency |
 
-**Even the Full variant is:**
-- 1.3x smaller than Yjs (despite having more features)
-- 3.1x smaller than Firebase
-- 7.2x smaller than Automerge
+**SyncKit's Position:**
+- 2.8x larger than Yjs (trade-off: WASM portability for multi-language servers)
+- Competitive with Automerge (similar size, simpler API for structured data)
+- 2.8x smaller than Firebase
 
 ---
 
 ## 🎓 Common Scenarios
 
-### Scenario 1: Todo Application
+### Scenario 1: Todo Application with Server Sync
 
-**Recommended:** Core variant
+**Recommended:** Default variant
 
 **Why:**
 - Structured data (tasks, status, due dates)
 - Server sync for cross-device access
-- No collaborative text editing needed
 - Offline-first with automatic sync
 
 **Bundle:** ~53 KB (SyncKit) + ~130 KB (React) = ~183 KB total
 
-**Alternative:** Use Core-Lite (save 5 KB) if you don't need server sync
+**Example:** [Todo App](../../examples/todo-app/)
 
 ---
 
-### Scenario 2: Note-Taking App (Markdown)
+### Scenario 2: Local-Only Todo Application
 
-**Recommended:** Text variant
+**Recommended:** Lite variant
 
 **Why:**
-- Need collaborative text editing
-- Real-time sync across devices
-- Multiple users can edit simultaneously
-- Markdown editor with rich text
+- No server needed
+- Local storage only
+- Smallest bundle size
 
-**Bundle:** ~53 KB (SyncKit) + ~130 KB (React) = ~183 KB total
-
-**Alternative:** Use Core variant if you don't need real-time collaboration
+**Bundle:** ~48 KB (SyncKit) + ~130 KB (React) = ~178 KB total
 
 ---
 
 ### Scenario 3: Project Management (Kanban)
 
-**Recommended:** Core variant
+**Recommended:** Default variant
 
 **Why:**
 - Cards are structured data (title, description, status)
-- Not text documents (no need for Text CRDT)
 - Server sync for team collaboration
-- Drag-and-drop uses simple position updates
+- Offline-first with automatic conflict resolution
 
 **Bundle:** ~53 KB (SyncKit) + ~130 KB (React) + ~28 KB (dnd-kit) = ~211 KB total
 
@@ -452,54 +287,26 @@ Understanding the size trade-offs:
 
 ---
 
-### Scenario 4: Collaborative Code Editor
+### Scenario 4: Collaborative Editor
 
-**Recommended:** Text variant
+**Recommended:** Default variant
 
 **Why:**
-- Real-time collaborative coding
-- Character-level conflict resolution
-- Multiple cursors
-- Code is just text (use Text CRDT)
+- Document-level sync for editor content
+- Real-time collaboration via server sync
+- Works offline with automatic merge
 
 **Bundle:** ~53 KB (SyncKit) + ~130 KB (React) + ~124 KB (CodeMirror) = ~307 KB total
 
 **Example:** [Collaborative Editor](../../examples/collaborative-editor/)
 
----
-
-### Scenario 5: Whiteboard App
-
-**Recommended:** Full variant
-
-**Why:**
-- Need sets for shapes (add/remove)
-- Need counters for z-index
-- Need fractional index for layer ordering
-- Complex collaborative features
-
-**Bundle:** ~53 KB (SyncKit) + ~130 KB (React) + canvas library = variable
+**Note:** This example uses document-level sync (LWW), not character-level Text CRDT. Character-level CRDTs are coming in v0.2.0.
 
 ---
 
-### Scenario 6: Social Media App
+### Scenario 5: Offline-First Browser Extension
 
-**Recommended:** Core for posts + Full for interactions (lazy load)
-
-**Strategy:**
-- Use Core variant for main app (posts, profiles, comments)
-- Lazy-load Full variant for social features (likes, reactions, followers)
-- Best of both worlds: small initial bundle, full features when needed
-
-**Bundle:**
-- Initial: ~53 KB (Core) + app code
-- With social features: +0 KB (Full is same size as Core)
-
----
-
-### Scenario 7: Offline-First Browser Extension
-
-**Recommended:** Core-Lite variant
+**Recommended:** Lite variant
 
 **Why:**
 - Bundle size is critical for extensions
@@ -511,34 +318,54 @@ Understanding the size trade-offs:
 
 ---
 
+### Scenario 6: Cross-Platform Desktop App (Electron)
+
+**Decision depends on sync needs:**
+
+**Use Default if:**
+- Need cloud sync across devices
+- Multiple users collaborate
+- Data backup to server required
+
+**Use Lite if:**
+- Local files only (no cloud sync)
+- Single user application
+- Want smallest bundle
+
+---
+
 ## 💡 Best Practices
 
-### 1. Start with Core
+### 1. Start with Default
 
-Use the Core variant unless you have a specific need. It's the recommended default for 80% of applications.
-
-```typescript
-import { SyncKit } from '@synckit/sdk/core'
-// or just:
-import { SyncKit } from '@synckit/sdk' // defaults to core
-```
-
-You can always upgrade to Text or Full later if needed.
-
-### 2. Lazy Load Features
-
-If you only need advanced features occasionally, lazy-load them:
+Use the Default variant unless you have a specific reason not to. It's the recommended default for 95% of applications.
 
 ```typescript
-// Initial load: Core variant
-import { SyncKit } from '@synckit/sdk/core'
-
-// Later, when user opens text editor:
-const textModule = await import('@synckit/sdk/text')
-const textDoc = textModule.SyncKit.text('doc-1')
+import { SyncKit } from '@synckit/sdk'
 ```
 
-**Warning:** This loads a separate WASM binary. Only do this if the feature is rarely used.
+You only need to consider Lite if:
+- Bundle size is absolutely critical (saving 5 KB matters)
+- You're 100% sure you'll never need server sync
+
+### 2. Don't Over-Optimize
+
+**Rule of thumb:**
+- If you're unsure → Use Default variant
+- 5 KB difference is negligible for most apps
+- Server sync is valuable even if you don't use it immediately
+
+**Example of premature optimization:**
+```typescript
+// ❌ BAD: Using Lite to save 5 KB, then realizing you need sync
+import { SyncKit } from '@synckit/sdk/lite'
+// Later: "We need cross-device sync now..."
+// Now you have to refactor
+
+// ✅ GOOD: Use Default from the start
+import { SyncKit } from '@synckit/sdk'
+// Works offline, adds server sync later with zero code changes
+```
 
 ### 3. Profile Your App
 
@@ -549,67 +376,40 @@ Use browser dev tools to measure actual bundle impact:
 # Look for synckit_core_bg.wasm size (should match variant size)
 ```
 
-### 4. Don't Over-Engineer
-
-**Rule of thumb:**
-- If you're unsure → Use Core variant
-- Most apps don't need Text CRDT
-- Very few apps need Full variant
-- Core-Lite is only for local-only apps
-
-**Example of over-engineering:**
-```typescript
-// ❌ BAD: Using Text CRDT for a simple input
-import { SyncKit } from '@synckit/sdk/text'
-const title = sync.text('task-title')
-
-// ✅ GOOD: Use structured data for simple fields
-import { SyncKit } from '@synckit/sdk/core'
-const task = sync.document({ title: 'Buy milk' })
-```
-
-### 5. Consider Your Use Case
+### 4. Consider Your Use Case
 
 | If your app is... | Use variant |
 |-------------------|-------------|
-| Like Trello | Core |
-| Like Notion (without text editing) | Core |
-| Like Notion (with text editing) | Text |
-| Like Google Docs | Text |
-| Like Figma/Miro | Full |
-| Like Todoist | Core |
-| Like Obsidian | Text |
-| Like Airtable | Core |
+| Like Trello | Default |
+| Like Todoist | Default |
+| Like Notion | Default |
+| Like Airtable | Default |
+| Like Obsidian (cloud sync) | Default |
+| Like Obsidian (local-only) | Lite |
+| Browser extension (local) | Lite |
+| Offline-first PWA (no server) | Lite |
 
 ---
 
 ## ❓ FAQ
 
-### Q: Why are Text and Full the same size as Core?
+### Q: Which variant should most apps use?
 
-**A:** CRDT algorithms are small (~1 KB of code each) and compress well with gzip. The bundle is dominated by:
-- Protocol buffers (3 KB)
-- Serialization (10 KB)
-- WASM runtime (10 KB)
-- wasm-bindgen glue (13 KB)
+**A:** Default variant. It's only 5 KB larger than Lite and gives you server sync capability. Even if you don't use server sync immediately, having it available is valuable.
 
-Adding CRDTs adds minimal code, and gzip compresses repetitive patterns very efficiently.
+### Q: What's missing from Lite?
 
-### Q: Why is Core-Lite 5 KB smaller?
-
-**A:** Core-Lite excludes:
-- Protocol Buffers (prost): ~3 KB
+**A:** Lite excludes:
+- Protocol Buffers (network sync protocol): ~3 KB
 - DateTime library (chrono): ~2 KB
 
-These dependencies are only needed for network synchronization.
+These are only needed for network synchronization with a server.
 
 ### Q: Will my bundle really be ~50 KB?
 
-**A:** Yes, if you use any of our variants:
-- Core-Lite: ~48 KB total (WASM + SDK)
-- Core: ~53 KB total (WASM + SDK)
-- Text: ~53 KB total (WASM + SDK)
-- Full: ~53 KB total (WASM + SDK)
+**A:** Yes:
+- Lite: ~48 KB total (WASM + SDK)
+- Default: ~53 KB total (WASM + SDK)
 
 This is just SyncKit. Your total bundle includes:
 - SyncKit: ~48-53 KB
@@ -627,34 +427,28 @@ This is just SyncKit. Your total bundle includes:
 
 ### Q: Do variants affect data format?
 
-**A:** No. All variants use the same storage format. Data created with one variant can be opened with another variant.
+**A:** No. Both variants use the same storage format. Data created with one variant can be opened with the other.
 
-### Q: Can I use multiple variants in one app?
+### Q: Can I use both variants in one app?
 
-**A:** Not recommended. Each variant includes its own WASM binary, so using multiple variants duplicates code. Choose one variant that covers all your needs.
+**A:** Not recommended. Each variant includes its own WASM binary, so using both duplicates code (~50 KB overhead). Choose one variant for your entire app.
 
-**Exception:** Lazy loading is acceptable for rarely-used features.
+### Q: What happened to Text/Counter/Set CRDTs?
 
-### Q: What if I pick the wrong variant?
+**A:** These features are implemented in the Rust core but not yet exposed in the SDK. They're planned for v0.2.0. Currently, SyncKit focuses on document-level sync (LWW), which covers 95% of use cases.
 
-**A:** No problem! You can switch anytime by changing the import. No data migration needed.
+### Q: Why is the Collaborative Editor example using Default?
 
-### Q: Should I use Core-Lite or Core?
+**A:** The collaborative editor uses document-level sync (syncing the entire document content as a field), not character-level Text CRDT. This works well for most collaborative editing scenarios and is available today. True character-level Text CRDT is coming in v0.2.0.
 
-**Decision tree:**
-- No server sync needed → Core-Lite (save 5 KB)
-- Need server sync → Core (worth 5 KB)
-- Need real-time collaboration → Text or Full
+### Q: Is 5 KB really worth worrying about?
 
-### Q: Why not always use Full since it's the same size?
+**A:** Usually no. For most web apps, 5 KB is negligible. Only optimize for this if:
+- You're building a browser extension (strict size limits)
+- You're targeting low-end devices with slow networks
+- Your total bundle is already very large
 
-**A:**
-1. **API simplicity:** Core variant has a simpler, focused API
-2. **Mental model:** Using Core makes it clear you're using structured data sync
-3. **Future-proofing:** If Full variant grows in the future, you won't be affected
-4. **Documentation:** Examples and guides focus on Core variant
-
-That said, using Full doesn't hurt if you want all features available.
+Otherwise, use Default and get server sync capability.
 
 ---
 
@@ -666,7 +460,11 @@ Ready to build? Here's what to do next:
 2. **Install SyncKit:** `npm install @synckit/sdk`
 3. **Import your variant:**
    ```typescript
-   import { SyncKit } from '@synckit/sdk/core' // or core-lite, text, full
+   // Most apps
+   import { SyncKit } from '@synckit/sdk'
+
+   // Local-only apps
+   import { SyncKit } from '@synckit/sdk/lite'
    ```
 4. **Build your app:** Follow our [Getting Started Guide](./getting-started.md)
 
@@ -680,8 +478,9 @@ Ready to build? Here's what to do next:
 
 ## 📚 Further Reading
 
-- [Core Variant Example - Project Management](../../examples/project-management/)
-- [Text Variant Example - Collaborative Editor](../../examples/collaborative-editor/)
+- [Todo App Example](../../examples/todo-app/) - Simple CRUD
+- [Project Management Example](../../examples/project-management/) - Kanban board
+- [Collaborative Editor Example](../../examples/collaborative-editor/) - Real-time editing
 - [Performance Optimization Guide](./performance.md)
 - [Offline-First Architecture](./offline-first.md)
 - [Conflict Resolution](./conflict-resolution.md)
@@ -690,15 +489,39 @@ Ready to build? Here's what to do next:
 
 **Still have questions?**
 - [GitHub Issues](https://github.com/Dancode-188/synckit/issues)
-- [Discord Community](#)
+- [GitHub Discussions](https://github.com/Dancode-188/synckit/discussions)
 - Email: danbitengo@gmail.com
 
 ---
 
-**TL;DR:**
-- **Core-Lite (43.8 KB):** Local-only, no server sync
-- **Core (49.0 KB):** Recommended default, server sync
-- **Text (48.9 KB):** Core + collaborative text editing
-- **Full (48.9 KB):** Core + all CRDTs (counters, sets, etc.)
+## 📝 Summary
 
-Most apps should use **Core**. Start there, upgrade if needed.
+### Two Variants Available
+
+**Default (Recommended):**
+```typescript
+import { SyncKit } from '@synckit/sdk'
+```
+- 49 KB gzipped WASM
+- Includes server sync, protocol support
+- Perfect for 95% of applications
+- Use this unless you have a specific reason not to
+
+**Lite (Size-Optimized):**
+```typescript
+import { SyncKit } from '@synckit/sdk/lite'
+```
+- 44 KB gzipped WASM
+- Local-only, no server sync
+- 5 KB smaller than Default
+- Use for offline-first apps without backend
+
+### Decision Matrix
+
+| Need server sync? | Use variant |
+|-------------------|-------------|
+| Yes or Maybe | Default |
+| No, never | Lite |
+| Unsure | Default |
+
+**When in doubt, choose Default.** The 5 KB difference is worth the flexibility.

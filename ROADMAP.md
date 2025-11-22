@@ -559,10 +559,10 @@ fn merge(local: Field, remote: Field) -> Field {
 - WASM core: 51KB gzipped
 - **Total: ~66KB gzipped** ✅ Competitive!
 
-**Comparison:**
-- Yjs: ~50KB (text CRDT only)
-- Automerge: ~80KB (full suite)
-- SyncKit: ~66KB (complete feature set)
+**Comparison (Actual):**
+- Yjs: ~19KB (pure JavaScript, text CRDT only)
+- SyncKit: ~53KB (WASM + SDK, complete feature set)
+- Automerge: ~60-78KB (WASM + SDK, full suite)
 
 **Phase 6 Status:** ✅ COMPLETE & VERIFIED (Nov 13-14, 2025) - **3x faster than 5 days planned!**  
 **Verification:** All browser tests passing, working todo app example, WASM-SDK integration successful  

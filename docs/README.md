@@ -38,7 +38,7 @@ Switching from another platform?
 
 - **[From Firebase/Firestore](guides/migration-from-firebase.md)** - Escape vendor lock-in, true offline support
 - **[From Supabase](guides/migration-from-supabase.md)** - Add offline functionality (fixes GitHub #357)
-- **[From Yjs/Automerge](guides/migration-from-yjs.md)** - Simpler API, smaller bundle
+- **[From Yjs/Automerge](guides/migration-from-yjs.md)** - Simpler API, WASM portability
 
 ---
 
@@ -125,10 +125,10 @@ Learn from working examples:
 
 ### Performance
 
-**Bundle Size:**
-- **Default variant:** 49KB gzipped (full-featured with all CRDTs, network protocol)
-- **Lite variant:** 44KB gzipped (local-only, LWW + vector clocks)
-- **7x smaller than Automerge** (350KB), **3x smaller than Firebase** (150KB)
+**Bundle Size (gzipped):**
+- **Default variant:** ~53KB (document sync with network protocol)
+- **Lite variant:** ~48KB (local-only, no network protocol)
+- **Competitive:** Larger than Yjs (~19KB), smaller than Automerge (~60-78KB), much smaller than Firebase (~150KB)
 
 **Operation Speed:**
 - Local update: <1ms (371ns single field)
@@ -160,7 +160,11 @@ Learn how to test offline-first apps:
 
 **Module not found: @synckit/sdk**
 ```bash
-npm install @synckit/sdk @synckit/react
+# Core SDK (includes React hooks via @synckit/sdk/react)
+npm install @synckit/sdk
+
+# React is a peer dependency if you use the React hooks
+npm install react
 ```
 
 **QuotaExceededError: IndexedDB quota exceeded**

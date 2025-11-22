@@ -1,5 +1,23 @@
 # Offline-First Patterns with SyncKit
 
+**⚠️ IMPORTANT - v0.1.0 STATUS:**
+
+SyncKit v0.1.0 provides **local-first storage** but **network sync features are not yet implemented**.
+
+**What works now:**
+- ✅ IndexedDB/Memory storage
+- ✅ All CRUD operations work offline
+- ✅ Data persists across restarts
+
+**Not yet implemented:**
+- ❌ Network sync
+- ❌ Offline queue, sync strategies
+- ❌ `connect`/`disconnect`/`reconnect` methods
+
+**Use now for:** Fully offline apps. Network sync coming soon.
+
+---
+
 Learn how to build applications that work **everywhere, every time**—whether users are on a plane, in a tunnel, or with spotty connectivity.
 
 ---
@@ -221,7 +239,7 @@ if (navigator.storage && navigator.storage.persist) {
 ```typescript
 async function toggleTodo(id: string) {
   const todo = sync.document<Todo>(id)
-  const current = await todo.get()
+  const current = todo.get()
 
   // ✅ Three-step optimistic update pattern
 
@@ -259,43 +277,27 @@ async function toggleTodo(id: string) {
 - Financial transactions
 - Operations that can't be rolled back
 
-### Pattern 2: Offline Queue
+### Pattern 2: Offline Queue *(Coming in Future Version)*
 
-**Principle:** Queue operations when offline, replay when online.
+**⚠️ NOT YET IMPLEMENTED IN v0.1.0**
 
-SyncKit handles this **automatically**:
+Offline queue and network sync features are planned for a future release.
 
-```typescript
-const sync = new SyncKit({
-  url: 'ws://localhost:8080',
-  offlineQueue: true,        // Enable automatic queuing
-  offlineQueueSize: 1000     // Max operations to buffer
-})
+**Currently available in v0.1.0:**
+- ✅ Local IndexedDB storage
+- ✅ All CRUD operations work offline
+- ✅ Data persists across restarts
 
-// All operations are queued automatically when offline
-await todo1.update({ text: 'Buy milk' })      // Queued if offline
-await todo2.update({ completed: true })       // Queued if offline
-await todo3.delete()                          // Queued if offline
+**Coming in future version:**
+- 🔜 Automatic offline queue
+- 🔜 Network synchronization
+- 🔜 Queue monitoring APIs
 
-// When connection returns, all queued operations replay automatically
-```
+### Pattern 3: Sync Strategies *(Coming in Future Version)*
 
-**Monitor queue status:**
+**⚠️ NOT YET IMPLEMENTED IN v0.1.0**
 
-```typescript
-// Subscribe to queue status
-sync.onQueueChange((queueSize) => {
-  if (queueSize > 0) {
-    showBanner(`${queueSize} changes pending sync`)
-  }
-})
-
-// Get current queue size
-const pending = sync.queueSize
-console.log(`${pending} operations pending`)
-```
-
-### Pattern 3: Sync Strategies
+Sync strategies and network features are planned for future release.
 
 **Sync strategies** determine **when** to sync data with the server.
 
@@ -305,7 +307,7 @@ Sync immediately when online:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   syncStrategy: 'eager'  // Default
 })
 
@@ -324,7 +326,7 @@ Sync periodically or on-demand:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   syncStrategy: 'lazy',
   syncInterval: 30000  // Sync every 30 seconds
 })
@@ -349,7 +351,7 @@ Full control over when to sync:
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   syncStrategy: 'manual'
 })
 
@@ -419,7 +421,7 @@ self.addEventListener('sync', (event) => {
 
 ```typescript
 const sync = new SyncKit({
-  url: 'ws://localhost:8080',
+  serverUrl: 'ws://localhost:8080',
   backgroundSync: true  // Enables Background Sync API
 })
 ```
@@ -498,7 +500,7 @@ interface TodoV2 {
 // Migration helper
 async function migrateTodo(id: string) {
   const todo = sync.document<TodoV1>(id)
-  const data = await todo.get()
+  const data = todo.get()
 
   // Check if migration needed
   if (!('version' in data) || data.version < 2) {
