@@ -475,6 +475,7 @@ class CRDTSet<T> {
 ### Setup
 
 ```typescript
+import { useState, useEffect } from 'react'
 import { SyncProvider } from '@synckit/sdk/react'
 import { SyncKit } from '@synckit/sdk'
 
