@@ -35,20 +35,17 @@ This release brings SyncKit from concept to production-ready sync engine with co
 - **Binary Protocol** - Protobuf-based efficient wire format
 - **Vector Clocks** - Causality tracking for distributed sync
 - **Delta Computation** - Efficient delta-based synchronization
-- **WASM Compilation** - <15KB optimized WASM bundle
+- **WASM Compilation** - Optimized WASM bundles (~49KB default, ~44KB lite variant gzipped)
 - **Formal Verification** - TLA+ proofs for LWW, vector clocks, convergence (118,711 states verified)
 
 #### TypeScript SDK
 - **Document API** - Simple object sync with `sync.document<T>()`
-- **Text API** - Collaborative text with `sync.text()`
-- **Counter API** - Conflict-free counters with `sync.counter()`
-- **Set API** - Observed-Remove Sets with `sync.set<T>()`
-- **Offline Queue** - Automatic queueing of operations when offline
 - **Storage Adapters** - IndexedDB (default), Memory, and abstract adapter interface
-- **React Integration** - `useDocument`, `useText`, `useCounter`, `useSet` hooks
-- **Real-Time Sync** - WebSocket-based instant synchronization
-- **Cross-Tab Sync** - BroadcastChannel for instant cross-tab updates
+- **React Integration** - `useDocument`, `useSyncField`, `useSyncDocumentList` hooks
 - **TypeScript Support** - Full type safety with generics
+- **Two Optimized Variants** - Default (~53KB total) and Lite (~48KB total) gzipped
+
+**Note:** v0.1.0 SDK is **local-first only**. The Rust core includes Text/Counter/Set CRDTs and network protocol, but the TypeScript SDK doesn't expose these yet. Network sync and additional CRDTs coming in future releases.
 
 #### Server (TypeScript)
 - **WebSocket Server** - Bun + Hono production-ready server
