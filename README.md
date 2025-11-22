@@ -294,41 +294,38 @@ await counter.increment()
 
 ### Core
 - **`@synckit/sdk`** - Core SDK (TypeScript) + WASM engine
-- **`@synckit/react`** - React hooks and components
-- **`@synckit/vue`** - Vue 3 composables *(coming soon)*
-- **`@synckit/svelte`** - Svelte stores *(coming soon)*
+- **`@synckit/sdk/react`** - React hooks and components (export from SDK)
+- **`@synckit/sdk/lite`** - Lightweight version (local-only, 44KB)
 
 ### Servers
-- **`@synckit/server-typescript`** - Bun + Hono reference server (production-ready)
-- **`@synckit/server-python`** - FastAPI server *(coming soon)*
-- **`@synckit/server-go`** - Go server *(coming soon)*
-- **`@synckit/server-rust`** - Axum server *(coming soon)*
+- **`@synckit/server`** - Bun + Hono reference server (production-ready)
 
 ---
 
 ## 🚦 Status
 
-**Current Phase:** Phase 9 - Documentation & Examples (80% complete)
-**Next Release:** v0.1.0 *(~2 weeks)*
-**Production Ready:** Core sync, React hooks, TypeScript server ✅
+**Current Version:** v0.1.0-dev
+**Production Ready:** Core sync engine, React hooks, TypeScript server ✅
 
 ### What's Complete ✅
 
-- ✅ **Core Rust Engine** - LWW sync, Text CRDT, binary protocol
+- ✅ **Core Rust Engine** - LWW sync engine with CRDT foundation
 - ✅ **WASM Compilation** - 49KB bundle (44KB lite available), optimized performance
-- ✅ **TypeScript SDK** - Document API, storage adapters, offline queue
-- ✅ **React Integration** - `useDocument`, `useText`, `useCounter` hooks
-- ✅ **TypeScript Server** - WebSocket sync, JWT auth, PostgreSQL
-- ✅ **Testing Infrastructure** - 385 tests (unit, integration, chaos, load)
-- ✅ **Documentation** - 8 comprehensive guides, API reference
-- ✅ **Formal Verification** - TLA+ proofs, 118K states verified
+- ✅ **TypeScript SDK** - Document API, IndexedDB storage, offline queue
+- ✅ **React Integration** - `useSyncDocument`, `useSyncField`, `SyncProvider` hooks
+- ✅ **TypeScript Server** - WebSocket sync server with Bun + Hono
+- ✅ **Example Applications** - Todo app, collaborative editor, project management demos
+- ✅ **Documentation** - Comprehensive guides and API reference
+- ✅ **Build System** - Complete toolchain with benchmarks and CI
 
 ### What's Next 🚧
 
-- 🚧 **Example Applications** - Collaborative editor, project management app
-- 🚧 **Multi-Language Servers** - Python, Go, Rust implementations
-- 🚧 **Vue & Svelte Adapters** - Framework-specific integrations
-- 🚧 **Advanced Storage** - OPFS, SQLite adapters
+- 🚧 **Text CRDTs** - Collaborative text editing (`useText` hook) for character-level sync
+- 🚧 **Counter CRDTs** - Distributed counters (`useCounter` hook) for conflict-free increments
+- 🚧 **Framework Adapters** - Vue composables (`@synckit/sdk/vue`), Svelte stores (`@synckit/sdk/svelte`)
+- 🚧 **Multi-Language Servers** - Python, Go, Rust server implementations (TypeScript complete)
+- 🚧 **Advanced Storage** - OPFS (Origin Private File System), SQLite adapter
+- 🚧 **Conflict UI** - Visual conflict resolution interface for complex merge scenarios
 
 **[Full roadmap →](ROADMAP.md)**
 
@@ -420,7 +417,7 @@ Copyright (c) 2025 Daniel Bitengo
 - **[Issues](https://github.com/Dancode-188/synckit/issues)** - Bug reports and features
 - **[Roadmap](ROADMAP.md)** - Development timeline
 - **[Discussions](https://github.com/Dancode-188/synckit/discussions)** - Community discussions
-- **[Twitter](#)** - Updates and news *(coming soon)*
+- **[LinkedIn](https://www.linkedin.com/in/daniel-bitengo/)** - Connect and follow updates
 
 ---
 
