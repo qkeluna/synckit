@@ -1,13 +1,13 @@
 # SyncKit SDK API Design
 
 **Version:** 0.1.0
-**Last Updated:** November 23, 2025
+**Last Updated:** November 24, 2025
 
 ---
 
-## ⚠️ v0.1.0 - IMPLEMENTATION STATUS
+## ✅ v0.1.0 - IMPLEMENTATION STATUS
 
-**SyncKit v0.1.0 is a LOCAL-FIRST library.** Network sync features are documented but **NOT YET IMPLEMENTED**.
+**SyncKit v0.1.0 is COMPLETE with offline-first sync AND network synchronization.**
 
 ### ✅ Implemented in v0.1.0
 
@@ -18,23 +18,29 @@
 - ✅ IndexedDB & Memory storage adapters
 - ✅ Custom storage adapter interface
 
+**Network Sync (NEW in v0.1.0):**
+- ✅ WebSocket client with auto-reconnection
+- ✅ Real-time document synchronization
+- ✅ Offline queue with persistent storage
+- ✅ Network status tracking
+- ✅ Binary message protocol
+- ✅ Vector clock conflict resolution
+
 **React (`@synckit/sdk/react`):**
 - ✅ `SyncProvider`, `useSyncKit()`, `useSyncDocument()`, `useSyncField()`, `useSyncDocumentList()`
+- ✅ `useNetworkStatus()`, `useSyncState()`, `useSyncDocumentWithState()`
 
 **Config Options:**
-- ✅ `storage`, `name`, `clientId`
-- ⚠️ `serverUrl` (accepted but not used yet)
+- ✅ `storage`, `name`, `clientId`, `serverUrl`, `network` (reconnect, heartbeat, queue)
 
 ### ❌ NOT Implemented Yet
 
-- ❌ Network/WebSocket sync
-- ❌ `connect()`, `disconnect()`, `reconnect()`
-- ❌ `Text`, `Counter`, `Set` CRDTs
+- ❌ `Text`, `Counter`, `Set` CRDTs (planned for v0.2.0)
 - ❌ `onConflict()` callbacks
-- ❌ `auth`, `offlineQueue`, `syncStrategy` config
+- ❌ `auth` config
 - ❌ Vue/Svelte adapters
 
-**Current use:** Offline-only apps. Network sync coming soon.
+**Current use:** Full offline-first apps with optional real-time network sync. Text/Counter/Set CRDTs coming in v0.2.0.
 
 ---
 
@@ -68,22 +74,37 @@ This document defines the TypeScript SDK API for SyncKit. The design follows the
 ```typescript
 import { SyncKit } from '@synckit/sdk'
 
-// Minimal configuration (auto-detects IndexedDB in browser, Memory in Node)
+// Minimal configuration (offline-only mode)
 const sync = new SyncKit()
 await sync.init()  // ✅ REQUIRED before using documents!
 
-// With server URL (accepted but not used in v0.1.0)
+// With server URL (enables network sync)
 const sync = new SyncKit({
-  serverUrl: 'ws://localhost:8080'
+  serverUrl: 'ws://localhost:8080'  // ✅ Enables WebSocket sync
 })
 await sync.init()
 
-// Full v0.1.0 configuration
+// Full v0.1.0 configuration with network options
 const sync = new SyncKit({
-  serverUrl: 'ws://localhost:8080',  // ⚠️ Accepted but not yet used
-  storage: 'indexeddb',              // ✅ WORKS: 'indexeddb' | 'memory'
-  name: 'my-app',                    // ✅ WORKS: Storage namespace
-  clientId: 'user-123',              // ✅ WORKS: Auto-generated if omitted
+  serverUrl: 'ws://localhost:8080',  // ✅ Enable network sync
+  storage: 'indexeddb',              // ✅ 'indexeddb' | 'memory'
+  name: 'my-app',                    // ✅ Storage namespace
+  clientId: 'user-123',              // ✅ Auto-generated if omitted
+  network: {                         // ✅ Optional network config
+    reconnect: {
+      initialDelay: 1000,
+      maxDelay: 30000,
+      multiplier: 1.5
+    },
+    heartbeat: {
+      interval: 30000,
+      timeout: 5000
+    },
+    queue: {
+      maxSize: 1000,
+      maxRetries: 5
+    }
+  }
 })
 await sync.init()
 ```
@@ -93,21 +114,47 @@ await sync.init()
 ```typescript
 // ✅ v0.1.0 ACTUAL interface
 interface SyncKitConfig {
-  // Storage adapter (✅ WORKS in v0.1.0)
+  // Storage adapter (✅ WORKS)
   storage?: 'indexeddb' | 'memory' | StorageAdapter
 
-  // Storage namespace (✅ WORKS in v0.1.0)
+  // Storage namespace (✅ WORKS)
   name?: string
 
-  // Server URL (⚠️ ACCEPTED but not used in v0.1.0)
+  // Server URL for network sync (✅ WORKS - enables WebSocket sync)
   serverUrl?: string
 
   // Client ID (✅ WORKS - auto-generated if omitted)
   clientId?: string
+
+  // Network configuration (✅ WORKS - optional)
+  network?: NetworkConfig
+}
+
+interface NetworkConfig {
+  // Reconnection settings
+  reconnect?: {
+    initialDelay?: number    // Initial delay before reconnection (ms)
+    maxDelay?: number        // Maximum delay between attempts (ms)
+    multiplier?: number      // Backoff multiplier
+  }
+
+  // Heartbeat/ping settings
+  heartbeat?: {
+    interval?: number        // Ping interval (ms)
+    timeout?: number         // Pong timeout (ms)
+  }
+
+  // Offline queue settings
+  queue?: {
+    maxSize?: number         // Maximum queued operations
+    maxRetries?: number      // Retry attempts per operation
+    retryDelay?: number      // Initial retry delay (ms)
+    retryBackoff?: number    // Retry delay multiplier
+  }
 }
 
 // ❌ Future options (NOT in v0.1.0):
-// auth, offlineQueue, reconnect, batchInterval, logLevel
+// auth, syncStrategy, batchInterval, logLevel
 ```
 
 ### SyncKit Methods
@@ -134,9 +181,27 @@ class SyncKit {
 
   // ✅ Check if initialized
   isInitialized(): boolean
-}
 
-// ❌ NOT in v0.1.0: connect(), disconnect(), status, onStatusChange(), reconnect()
+  // ✅ Network methods (available when serverUrl is configured)
+
+  // Get current network status (null if offline-only mode)
+  getNetworkStatus(): NetworkStatus | null
+
+  // Subscribe to network status changes (null if offline-only mode)
+  onNetworkStatusChange(callback: (status: NetworkStatus) => void): Unsubscribe | null
+
+  // Get document sync state (null if offline-only mode)
+  getSyncState(documentId: string): DocumentSyncState | null
+
+  // Subscribe to document sync state changes (null if offline-only mode)
+  onSyncStateChange(documentId: string, callback: (state: DocumentSyncState) => void): Unsubscribe | null
+
+  // Manually trigger document synchronization
+  syncDocument(documentId: string): Promise<void>
+
+  // Clean up resources
+  dispose(): void
+}
 ```
 
 ---
@@ -674,8 +739,9 @@ class SyncKitError extends Error {
 class StorageError extends SyncKitError { /* Storage operations */ }
 class WASMError extends SyncKitError { /* WASM initialization */ }
 class DocumentError extends SyncKitError { /* Document operations */ }
+class NetworkError extends SyncKitError { /* Network operations */ }
 
-// ❌ NOT in v0.1.0: NetworkError, AuthError, PermissionError, ConflictError
+// ❌ NOT in v0.1.0: AuthError, PermissionError, ConflictError
 ```
 
 ### Error Handling Patterns
@@ -690,6 +756,8 @@ try {
     console.error('Storage failed:', error.message)
   } else if (error instanceof WASMError) {
     console.error('WASM initialization failed:', error.message)
+  } else if (error instanceof NetworkError) {
+    console.error('Network error:', error.message)
   } else if (error instanceof SyncKitError) {
     console.error('SyncKit error:', error.code, error.message)
   }
@@ -716,12 +784,15 @@ export type { StorageAdapter, StoredDocument } from '@synckit/sdk'
 // ✅ Configuration and types
 export type {
   SyncKitConfig,
+  NetworkConfig,
   DocumentData,
   FieldPath,
   SubscriptionCallback,
   Unsubscribe,
   QueuedOperation,
-  QueueConfig
+  QueueConfig,
+  NetworkStatus,
+  DocumentSyncState
 } from '@synckit/sdk'
 
 // ✅ Error classes
@@ -729,7 +800,8 @@ export {
   SyncKitError,
   StorageError,
   WASMError,
-  DocumentError
+  DocumentError,
+  NetworkError
 } from '@synckit/sdk'
 
 // ✅ React hooks (requires React)
@@ -738,7 +810,10 @@ export {
   useSyncKit,
   useSyncDocument,
   useSyncField,
-  useSyncDocumentList
+  useSyncDocumentList,
+  useNetworkStatus,
+  useSyncState,
+  useSyncDocumentWithState
 } from '@synckit/sdk/react'
 export type { SyncProviderProps } from '@synckit/sdk/react'
 
@@ -798,21 +873,42 @@ async function deleteTodo(id: string) {
 }
 ```
 
-### Collaborative Editor *(Not in v0.1.0)*
+### Collaborative Document Editing (v0.1.0 - Document Sync)
 
 ```typescript
-// ❌ NOT IMPLEMENTED - Text CRDT and network sync not in v0.1.0
+// ✅ WORKS in v0.1.0 - Network sync with documents
 import { SyncKit } from '@synckit/sdk'
 
+interface Note {
+  title: string
+  content: string
+  lastModified: number
+}
+
+// ✅ Enable network sync with serverUrl
 const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
 await sync.init()
 
-const noteText = sync.text('shared-note')  // ❌ text() doesn't exist
+const note = sync.document<Note>('shared-note')
 
-noteText.subscribe((content) => {
-  // ...
+// ✅ Subscribe to real-time updates
+note.subscribe((data) => {
+  console.log('Note updated:', data)
+  editor.setValue(data.content)
 })
+
+// ✅ Update content (syncs to all clients)
+await note.update({
+  content: editor.getValue(),
+  lastModified: Date.now()
+})
+
+// ✅ Monitor sync state
+const syncState = sync.getSyncState('shared-note')
+console.log('Sync state:', syncState?.state)  // 'syncing' | 'synced' | 'error'
 ```
+
+**Note:** Text CRDT for character-level collaborative editing is NOT in v0.1.0 (coming in v0.2.0). Use document-level sync for now.
 
 ---
 
