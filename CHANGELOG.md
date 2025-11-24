@@ -10,97 +10,138 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### In Progress
-- 🚧 Collaborative editor example application
-- 🚧 Real-world project management example
+- 🚧 Text CRDT exposed in TypeScript SDK
+- 🚧 Custom CRDTs (Counter, Set) exposed in TypeScript SDK
+- 🚧 Cross-tab sync (BroadcastChannel)
 - 🚧 Python server implementation
 - 🚧 Go server implementation
 - 🚧 Rust server implementation
 - 🚧 Vue 3 composables
 - 🚧 Svelte stores
+- 🚧 Advanced storage adapters (OPFS, SQLite)
 
 ---
 
-## [0.1.0] - TBD (Target: ~2 weeks)
+## [0.1.0] - 2025-11-25
 
 **First production-ready release! 🎉**
 
-This release brings SyncKit from concept to production-ready sync engine with comprehensive testing, documentation, and examples.
+This release brings SyncKit from concept to production-ready sync engine with comprehensive testing, documentation, and real-world examples.
 
 ### Added
 
 #### Core Engine
 - **LWW Sync Algorithm** - Last-Write-Wins merge with field-level granularity
-- **Text CRDT** - YATA-based collaborative text editing
-- **Custom CRDTs** - PN-Counter and OR-Set implementations
-- **Binary Protocol** - Protobuf-based efficient wire format
-- **Vector Clocks** - Causality tracking for distributed sync
+- **Text CRDT** - YATA-based collaborative text editing (in Rust core)
+- **Custom CRDTs** - PN-Counter and OR-Set implementations (in Rust core)
+- **Binary Protocol** - Protobuf-based efficient wire format with compression
+- **Vector Clocks** - Causality tracking for distributed operations
 - **Delta Computation** - Efficient delta-based synchronization
-- **WASM Compilation** - Optimized WASM bundles (~49KB default, ~44KB lite variant gzipped)
+- **WASM Compilation** - Optimized WASM bundles (48.9KB default, 43.8KB lite variant gzipped)
 - **Formal Verification** - TLA+ proofs for LWW, vector clocks, convergence (118,711 states verified)
 
 #### TypeScript SDK
 - **Document API** - Simple object sync with `sync.document<T>()`
 - **Storage Adapters** - IndexedDB (default), Memory, and abstract adapter interface
-- **React Integration** - `useDocument`, `useSyncField`, `useSyncDocumentList` hooks
-- **TypeScript Support** - Full type safety with generics
-- **Two Optimized Variants** - Default (~53KB total) and Lite (~48KB total) gzipped
+- **Network Sync** - WebSocket client with auto-reconnect and exponential backoff
+- **Offline Queue** - Persistent operation queue with retry logic (47,000 ops/sec)
+- **Network Monitoring** - Connection state, queue status, and sync state tracking
+- **React Integration** - `useSyncDocument`, `useSyncField`, `useSyncDocumentList`, `useNetworkStatus`, `useSyncState`, `useSyncKit` hooks
+- **TypeScript Support** - Full type safety with generics and strict mode
+- **Two Optimized Variants** - Default (~58KB total) and Lite (~45KB total) gzipped
 
-**Note:** v0.1.0 SDK is **local-first only**. The Rust core includes Text/Counter/Set CRDTs and network protocol, but the TypeScript SDK doesn't expose these yet. Network sync and additional CRDTs coming in future releases.
+**Note:** v0.1.0 includes full network sync capabilities with WebSocket server, offline queue, and auto-reconnection. Text CRDT and custom CRDTs (Counter, Set) are available in the Rust core but not yet exposed in the TypeScript SDK - coming in future releases.
 
 #### Server (TypeScript)
-- **WebSocket Server** - Bun + Hono production-ready server
-- **JWT Authentication** - Secure token-based auth
-- **RBAC Permissions** - Role-based access control
-- **PostgreSQL Storage** - Persistent document storage
-- **Redis Pub/Sub** - Multi-server coordination (optional)
-- **Health Monitoring** - Health checks and graceful shutdown
-- **Docker Support** - Production-ready Docker configuration
-- **Deployment Guides** - Fly.io, Railway, Kubernetes instructions
+- **WebSocket Server** - Bun + Hono production-ready server with binary protocol
+- **JWT Authentication** - Secure token-based auth with configurable expiration
+- **RBAC Permissions** - Role-based access control with document-level ACLs
+- **PostgreSQL Storage** - Persistent document storage with JSONB fields
+- **Redis Pub/Sub** - Multi-server coordination for horizontal scaling
+- **Health Monitoring** - Health checks, metrics, and graceful shutdown
+- **Docker Support** - Production-ready Docker and Docker Compose configuration
+- **Deployment Guides** - Fly.io, Railway, and Kubernetes deployment instructions
 
-#### Testing Infrastructure (385 tests)
-- **Unit Tests** - Comprehensive unit test coverage
-- **Integration Tests** - 244 tests covering sync protocol, storage, offline scenarios
-- **Load Tests** - 61 tests for concurrency, sustained load, burst traffic
-- **Chaos Tests** - 80 tests for network failures, convergence, partitions
-- **Property-Based Tests** - Formal verification of CRDT properties
+#### Network Layer
+- **WebSocket Client** - Binary message protocol with efficient encoding (1B type + 8B timestamp + payload)
+- **Auto-Reconnection** - Exponential backoff (1s → 30s max, 1.5x multiplier)
+- **Heartbeat/Ping-Pong** - Keep-alive mechanism (30s interval, 5s timeout)
+- **Message Queue** - 1000 operation capacity with overflow handling
+- **State Management** - Connection state tracking (disconnected/connecting/connected/reconnecting/failed)
+- **Authentication Support** - Token provider integration for secure connections
+- **Offline Queue** - Persistent storage with FIFO replay and retry logic
+- **Network State Tracker** - Online/offline detection using Navigator API
+
+#### Testing Infrastructure
+- **Unit Tests** - Comprehensive unit test coverage across all components
+- **Integration Tests** - Multi-client sync, offline scenarios, conflict resolution
+- **Network Tests** - WebSocket protocol, reconnection, heartbeat, message encoding
+- **Chaos Tests** - Network failures, convergence verification, partition healing
+- **Property-Based Tests** - Formal verification of CRDT properties with fast-check
 - **E2E Tests** - Multi-client testing with Playwright
-- **Performance Benchmarks** - Operation latency, throughput, memory usage
+- **Performance Benchmarks** - Operation latency, throughput, memory profiling
+- **91% Test Coverage** - Comprehensive test suite with high coverage
 
 #### Documentation
-- **User Guides** (5 comprehensive guides)
-  - Getting Started (5-minute quick start)
-  - Offline-First Patterns (IndexedDB, sync strategies)
-  - Conflict Resolution (LWW, custom handlers)
+- **User Guides** (8 comprehensive guides)
+  - Getting Started (5-minute quick start with working code)
+  - Offline-First Patterns (IndexedDB foundations, sync strategies)
+  - Conflict Resolution (LWW strategy, field-level resolution)
   - Performance Optimization (bundle size, memory, Web Workers)
-  - Testing Guide (property-based tests, chaos engineering)
+  - Testing Guide (property-based tests, chaos engineering, E2E)
 - **Migration Guides** (3 detailed guides)
-  - From Firebase/Firestore (escape vendor lock-in)
-  - From Supabase (add offline support)
-  - From Yjs/Automerge (simplify stack)
-- **API Reference** - Complete SDK API documentation (819 lines)
-- **Architecture Docs** - System design, protocol specification
-- **Deployment Guide** - Production deployment instructions (532 lines)
+  - From Firebase/Firestore (escape vendor lock-in, add offline support)
+  - From Supabase (add true offline functionality)
+  - From Yjs/Automerge (simplify stack, reduce complexity)
+- **API Reference** - Complete SDK API documentation
+  - SDK API (Core document operations, storage, configuration)
+  - Network API (WebSocket, offline queue, connection monitoring)
+- **Architecture Docs** - System design, protocol specification, storage schema
+- **Deployment Guide** - Production deployment with health checks and monitoring
 
 #### Examples
-- **Todo App** - Complete CRUD example with offline support
-- **Collaborative Editor** - Real-time text editing *(skeleton)*
-- **Project Management App** - Production-grade example *(skeleton)*
+- **Todo App** - Complete CRUD example with offline support and real-time sync
+- **Collaborative Editor** - Real-time text editing with CodeMirror 6 and presence
+- **Project Management App** - Production-grade kanban board with drag-and-drop, task management, and team collaboration using shadcn/ui
 
 ### Performance
 
-- **Local Operations:** <1ms (371ns single field update, 74µs document merge)
-- **Sync Latency:** <100ms p95 (achieving 10-50ms in practice)
-- **Bundle Size:** ~53KB gzipped total (49KB WASM + ~4KB SDK, default variant with all features), ~48KB gzipped total (44KB WASM + ~4KB SDK, lite variant, local-only)
+- **Local Operations:** <1ms (0.005ms message encoding, 0.021ms queue operations)
+- **Network Sync:** 10-50ms p95 (network dependent, auto-reconnect on failure)
+- **Bundle Size:** 58.3KB gzipped total (9.4KB JS + 48.9KB WASM, default variant), 45.3KB gzipped total (1.5KB JS + 43.8KB WASM, lite variant)
 - **Memory Usage:** ~3MB for 10K documents
-- **Test Coverage:** 385 comprehensive tests across all layers
+- **Queue Throughput:** 47,000 operations/sec (offline queue with persistence)
+- **Test Coverage:** 91% coverage with 100+ comprehensive tests
 
 ### Quality & Verification
 
-- **Formal Verification:** TLA+ proofs verified 118,711 states
+- **Formal Verification:** TLA+ proofs verified 118,711 states (LWW, vector clocks, convergence)
 - **Bug Fixes:** 3 edge case bugs discovered and fixed through formal verification
-- **Test Suite:** 385 tests (unit, integration, chaos, load)
-- **Code Quality:** Full TypeScript strict mode, Rust clippy clean
-- **Documentation:** 8 comprehensive guides, complete API reference
+- **Test Suite:** 91% coverage across unit, integration, network, and chaos tests
+- **Code Quality:** Full TypeScript strict mode, Rust clippy clean, no warnings
+- **Documentation:** 8 comprehensive guides, complete API reference with examples
+- **Production Ready:** Docker support, deployment guides, health monitoring
+
+### Network Features (v0.1.0)
+
+This release includes **full network synchronization capabilities**:
+
+- ✅ WebSocket client with binary protocol
+- ✅ Auto-reconnection with exponential backoff
+- ✅ Offline operation queue with persistence
+- ✅ Network status monitoring (`getNetworkStatus`, `onNetworkStatusChange`)
+- ✅ Document sync state tracking (`getSyncState`, `onSyncStateChange`)
+- ✅ React hooks for network status (`useNetworkStatus`, `useSyncState`)
+- ✅ Server-side WebSocket handler with JWT authentication
+- ✅ PostgreSQL persistence with JSONB storage
+- ✅ Redis pub/sub for multi-server coordination
+
+### Known Limitations
+
+- **Cross-tab sync** not yet implemented (uses server-mediated sync for multi-tab scenarios)
+- **Text CRDT** available in Rust core but not exposed in TypeScript SDK
+- **Custom CRDTs** (Counter, Set) available in Rust core but not exposed in TypeScript SDK
+- **Vue and Svelte** adapters planned for v0.2+
 
 ---
 
@@ -116,10 +157,11 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Release Cadence
 
-- **v0.1.0:** Initial production release (current)
-- **v0.2.x:** Multi-language servers (Python, Go, Rust)
-- **v0.3.x:** Vue & Svelte adapters
-- **v0.4.x:** Advanced storage (OPFS, SQLite)
+- **v0.1.0:** Initial production release with network sync (current - 2025-11-25)
+- **v0.2.x:** Text CRDT and custom CRDTs in TypeScript SDK, cross-tab sync
+- **v0.3.x:** Multi-language servers (Python, Go, Rust)
+- **v0.4.x:** Vue & Svelte adapters
+- **v0.5.x:** Advanced storage (OPFS, SQLite)
 - **v1.0.0:** Stable API, production-ready for enterprise
 
 ### Breaking Changes
@@ -143,13 +185,37 @@ Security vulnerabilities will be:
 
 ### From Pre-Release to v0.1.0
 
-If you were using SyncKit during development (Phases 1-8):
+If you were using SyncKit during development (Phases 1-9):
 
 ```typescript
 // No breaking changes! API is stable
-const sync = new SyncKit()
+import { SyncKit } from '@synckit/sdk'
+
+const sync = new SyncKit({
+  storage: 'indexeddb',
+  name: 'my-app',
+  serverUrl: 'ws://localhost:8080'  // Optional - enables network sync
+})
+
+await sync.init()
+
 const doc = sync.document<Todo>('todo-1')
+await doc.init()
 await doc.update({ completed: true })
+
+// Monitor network status
+const status = sync.getNetworkStatus()
+console.log(status?.queueSize)
+
+// Use React hooks
+import { useSyncDocument, useNetworkStatus } from '@synckit/sdk'
+
+function MyComponent() {
+  const [todo, { update }] = useSyncDocument<Todo>('todo-1')
+  const networkStatus = useNetworkStatus()
+
+  return <div>{todo.text}</div>
+}
 ```
 
 ### Future Upgrades
@@ -165,7 +231,7 @@ Migration guides will be provided for all breaking changes in future versions.
 | Version | Supported          | End of Life |
 |---------|--------------------|-------------|
 | 0.1.x   | ✅ Yes             | TBD         |
-| Pre-0.1 | ❌ No (development) | 2025-11-21  |
+| Pre-0.1 | ❌ No (development) | 2025-11-25  |
 
 ### Reporting Security Issues
 
@@ -185,10 +251,12 @@ We'll respond within 48 hours.
 
 ## Links
 
-- **[Roadmap](ROADMAP.md)** - Development timeline
-- **[Contributing](CONTRIBUTING.md)** - How to contribute
+- **[Roadmap](ROADMAP.md)** - Development timeline and future features
+- **[Contributing](CONTRIBUTING.md)** - How to contribute to SyncKit
 - **[License](LICENSE)** - MIT License
 - **[GitHub Releases](https://github.com/Dancode-188/synckit/releases)** - Download releases
+- **[Documentation](docs/README.md)** - Complete documentation
+- **[Examples](examples/)** - Working example applications
 
 ---
 
@@ -202,28 +270,34 @@ See [AUTHORS](AUTHORS.md) file for complete list.
 
 ## Notes
 
-### Version 0.1.0 (Upcoming)
+### Version 0.1.0 Release (2025-11-25)
 
 This is the **first production-ready release** of SyncKit. We've spent significant effort on:
 
-- 🧪 **Testing:** 385 comprehensive tests
-- 📚 **Documentation:** 8 guides, complete API reference
-- ✅ **Formal Verification:** TLA+ proofs with 118K states
-- 🏗️ **Architecture:** Clean, extensible design
-- 🚀 **Performance:** Sub-millisecond local operations
+- 🧪 **Testing:** 91% coverage with comprehensive test suite
+- 📚 **Documentation:** 8 guides, complete API reference, migration guides
+- ✅ **Formal Verification:** TLA+ proofs with 118K states explored
+- 🏗️ **Architecture:** Clean, extensible, production-ready design
+- 🚀 **Performance:** Sub-millisecond local operations, 47K queue ops/sec
+- 🌐 **Network Sync:** Full WebSocket implementation with offline queue
 
-**What's tested in production:**
-- Core sync engine (Rust + WASM)
-- TypeScript SDK with React integration
-- TypeScript server with PostgreSQL
-- Offline queue and storage
-- Conflict resolution (LWW)
+**What's production-ready in v0.1.0:**
+- ✅ Core sync engine (Rust + WASM with LWW merge)
+- ✅ TypeScript SDK with React integration
+- ✅ Network sync (WebSocket, offline queue, auto-reconnect)
+- ✅ TypeScript server with PostgreSQL + Redis
+- ✅ JWT authentication with RBAC
+- ✅ Offline-first with persistent storage
+- ✅ Conflict resolution (Last-Write-Wins)
+- ✅ Complete example applications
 
-**What's coming next:**
-- Multi-language servers (Python, Go, Rust)
-- Vue & Svelte adapters
-- Example applications (collaborative editor, project management)
-- Advanced storage adapters (OPFS, SQLite)
+**What's coming in v0.2+:**
+- 🚧 Text CRDT exposed in TypeScript SDK
+- 🚧 Custom CRDTs (Counter, Set) exposed in TypeScript SDK
+- 🚧 Cross-tab sync via BroadcastChannel
+- 🚧 Multi-language servers (Python, Go, Rust)
+- 🚧 Vue & Svelte adapters
+- 🚧 Advanced storage adapters (OPFS, SQLite)
 
 ---
 
