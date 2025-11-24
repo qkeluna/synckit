@@ -52,20 +52,24 @@ SyncKit testing follows these principles:
 ### Testing Document Updates
 
 ```typescript
-import { describe, test, expect, beforeEach } from 'bun:test'
+import { describe, test, expect, beforeEach } from 'vitest'
 import { SyncKit } from '@synckit/sdk'
 
 describe('Document operations', () => {
-  let sync: SyncKit
+  let synckit: SyncKit
 
   beforeEach(async () => {
     // Use in-memory storage for fast tests
-    sync = new SyncKit({ storage: 'memory', name: 'test' })
-    await sync.init()
+    synckit = new SyncKit({
+      storage: 'memory',
+      name: 'test',
+      clientId: 'test-client'
+    })
+    await synckit.init()
   })
 
   test('should create and read document', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     await todo.update({
@@ -81,7 +85,7 @@ describe('Document operations', () => {
   })
 
   test('should update document fields', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     await todo.update({
@@ -98,7 +102,7 @@ describe('Document operations', () => {
   })
 
   test('should handle partial updates', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     await todo.update({
@@ -118,7 +122,7 @@ describe('Document operations', () => {
   })
 
   test('should delete document', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     await todo.update({
@@ -127,11 +131,11 @@ describe('Document operations', () => {
       completed: false
     })
 
-    // Delete the entire document using sync.deleteDocument()
-    await sync.deleteDocument('todo-1')
+    // Delete the entire document
+    await synckit.deleteDocument('todo-1')
 
-    // Verify document is deleted by checking if it's in the list
-    const docs = await sync.listDocuments()
+    // Verify document is deleted
+    const docs = await synckit.listDocuments()
     expect(docs.includes('todo-1')).toBe(false)
   })
 })
@@ -142,7 +146,7 @@ describe('Document operations', () => {
 ```typescript
 describe('Document subscriptions', () => {
   test('should receive updates via subscription', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     // Track received updates
@@ -164,7 +168,7 @@ describe('Document subscriptions', () => {
     // Wait for subscription to fire
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    // 3 updates: initial empty state, first update, second update
+    // Should have received multiple updates
     expect(updates.length).toBeGreaterThanOrEqual(2)
     expect(updates[updates.length - 2].completed).toBe(false)
     expect(updates[updates.length - 1].completed).toBe(true)
@@ -173,7 +177,7 @@ describe('Document subscriptions', () => {
   })
 
   test('should unsubscribe correctly', async () => {
-    const todo = sync.document<Todo>('todo-1')
+    const todo = synckit.document<Todo>('todo-1')
     await todo.init()
 
     let callCount = 0
@@ -201,8 +205,16 @@ describe('Document subscriptions', () => {
 ```typescript
 describe('LWW conflict resolution', () => {
   test('should resolve conflicts with last-write-wins', async () => {
-    const syncA = new SyncKit({ storage: 'memory', name: 'client-a' })
-    const syncB = new SyncKit({ storage: 'memory', name: 'client-b' })
+    const syncA = new SyncKit({
+      storage: 'memory',
+      name: 'client-a',
+      clientId: 'client-a'
+    })
+    const syncB = new SyncKit({
+      storage: 'memory',
+      name: 'client-b',
+      clientId: 'client-b'
+    })
     await syncA.init()
     await syncB.init()
 
@@ -236,8 +248,16 @@ describe('LWW conflict resolution', () => {
   })
 
   test('should resolve field-level conflicts independently', async () => {
-    const syncA = new SyncKit({ storage: 'memory', name: 'client-a' })
-    const syncB = new SyncKit({ storage: 'memory', name: 'client-b' })
+    const syncA = new SyncKit({
+      storage: 'memory',
+      name: 'client-a',
+      clientId: 'client-a'
+    })
+    const syncB = new SyncKit({
+      storage: 'memory',
+      name: 'client-b',
+      clientId: 'client-b'
+    })
     await syncA.init()
     await syncB.init()
 
@@ -293,7 +313,7 @@ Instead of writing specific test cases, define **properties** that should always
 ### Using fast-check
 
 ```typescript
-import { test } from 'bun:test'
+import { test } from 'vitest'
 import * as fc from 'fast-check'
 
 test('convergence property: all clients converge to same state', async () => {
@@ -324,9 +344,9 @@ test('convergence property: all clients converge to same state', async () => {
       async (operations) => {
         // Create 3 clients
         const clients = [
-          new SyncKit({ storage: 'memory', name: 'client-0' }),
-          new SyncKit({ storage: 'memory', name: 'client-1' }),
-          new SyncKit({ storage: 'memory', name: 'client-2' })
+          new SyncKit({ storage: 'memory', name: 'client-0', clientId: 'client-0' }),
+          new SyncKit({ storage: 'memory', name: 'client-1', clientId: 'client-1' }),
+          new SyncKit({ storage: 'memory', name: 'client-2', clientId: 'client-2' })
         ]
 
         // Initialize all clients
@@ -389,8 +409,16 @@ test('commutativity property: operations can be applied in any order', async () 
         { minLength: 2, maxLength: 10 }
       ),
       async (operations) => {
-        const sync1 = new SyncKit({ storage: 'memory', name: 'sync1' })
-        const sync2 = new SyncKit({ storage: 'memory', name: 'sync2' })
+        const sync1 = new SyncKit({
+          storage: 'memory',
+          name: 'sync1',
+          clientId: 'sync1'
+        })
+        const sync2 = new SyncKit({
+          storage: 'memory',
+          name: 'sync2',
+          clientId: 'sync2'
+        })
         await sync1.init()
         await sync2.init()
 
@@ -432,9 +460,13 @@ test('idempotence property: applying operation twice = applying once', async () 
         value: fc.anything()
       }),
       async (operation) => {
-        const sync = new SyncKit({ storage: 'memory', name: 'test' })
-        await sync.init()
-        const doc = sync.document<any>('test-1')
+        const synckit = new SyncKit({
+          storage: 'memory',
+          name: 'test',
+          clientId: 'test'
+        })
+        await synckit.init()
+        const doc = synckit.document<any>('test-1')
         await doc.init()
 
         // Apply once
@@ -457,68 +489,182 @@ test('idempotence property: applying operation twice = applying once', async () 
 
 ## Network Condition Testing
 
-**⚠️ IMPORTANT - v0.1.0 STATUS:**
+### Testing Network Sync
 
-The network testing examples in this section reference features **NOT YET IMPLEMENTED in v0.1.0**:
-- ❌ Network sync (serverUrl, connect/disconnect)
-- ❌ Offline queue (offlineQueue, queueSize)
-- ❌ Network reconnection
-
-**Current v0.1.0:** SyncKit works offline-only with local IndexedDB storage. Network sync features are planned for future versions.
-
-### Simulating Offline/Online Transitions (Planned Feature)
+Test that documents sync correctly with a server:
 
 ```typescript
-describe('Offline/online transitions', () => {
-  test('should queue operations when offline', async () => {
-    const sync = new SyncKit({
+import { SyncKit } from '@synckit/sdk'
+
+describe('Network sync', () => {
+  test('should sync changes to server', async () => {
+    const synckit = new SyncKit({
+      storage: 'memory',
       serverUrl: 'ws://localhost:8080',
-      offlineQueue: true
+      clientId: 'test-client'
+    })
+    await synckit.init()
+
+    const todo = synckit.document<Todo>('todo-1')
+    await todo.init()
+
+    // Track network status
+    const statuses: NetworkStatus[] = []
+    synckit.onNetworkStatusChange?.((status) => {
+      statuses.push(status)
     })
 
-    const todo = sync.document<Todo>('todo-1')
+    // Make changes
+    await todo.update({
+      id: 'todo-1',
+      text: 'Buy milk',
+      completed: false
+    })
 
-    // Go offline
-    await sync.disconnect()
+    // Wait for sync
+    await waitForSync(synckit, 'todo-1')
 
-    // Make changes while offline
-    await todo.update({ completed: true })
-    await todo.update({ text: 'Updated offline' })
-
-    // Check queue size
-    expect(sync.queueSize).toBe(2)
-
-    // Reconnect
-    await sync.reconnect()
-
-    // Wait for queue to flush
-    await waitForQueueEmpty(sync)
-
-    expect(sync.queueSize).toBe(0)
+    // Check sync state
+    const syncState = synckit.getSyncState('todo-1')
+    expect(syncState).not.toBeNull()
+    expect(syncState?.state).toBe('synced')
   })
 
-  test('should handle rapid offline/online cycles', async () => {
-    const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
-    const todo = sync.document<Todo>('todo-1')
+  test('should queue operations when offline', async () => {
+    const synckit = new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://localhost:8080',
+      clientId: 'test-client'
+    })
+    await synckit.init()
 
-    // Rapidly toggle connection
-    for (let i = 0; i < 10; i++) {
-      await sync.disconnect()
-      await todo.update({ counter: i })
-      await sync.reconnect()
-      await new Promise(r => setTimeout(r, 50))
+    const todo = synckit.document<Todo>('todo-1')
+    await todo.init()
+
+    // Make changes (may queue if offline)
+    await todo.update({ completed: true })
+    await todo.update({ text: 'Updated' })
+
+    // Check network status
+    const status = synckit.getNetworkStatus()
+    if (status) {
+      // Queue size depends on network state
+      expect(status.queueSize).toBeGreaterThanOrEqual(0)
+      console.log('Queued operations:', status.queueSize)
     }
+  })
+})
 
-    // All updates should eventually sync
-    await waitForQueueEmpty(sync)
+// Helper function to wait for sync
+async function waitForSync(
+  synckit: SyncKit,
+  documentId: string,
+  timeout = 5000
+): Promise<void> {
+  const start = Date.now()
 
-    const data = todo.get()
-    expect(data.counter).toBe(9)
+  while (Date.now() - start < timeout) {
+    const state = synckit.getSyncState(documentId)
+    if (state && state.state === 'synced') {
+      return
+    }
+    await new Promise(r => setTimeout(r, 100))
+  }
+
+  throw new Error(`Timeout waiting for document ${documentId} to sync`)
+}
+
+// Helper function to wait for queue to empty
+async function waitForQueueEmpty(
+  synckit: SyncKit,
+  timeout = 5000
+): Promise<void> {
+  const start = Date.now()
+
+  while (Date.now() - start < timeout) {
+    const status = synckit.getNetworkStatus()
+    if (!status || status.queueSize === 0) {
+      return
+    }
+    await new Promise(r => setTimeout(r, 100))
+  }
+
+  throw new Error('Timeout waiting for queue to empty')
+}
+```
+
+### Network Status Monitoring
+
+Test network status change notifications:
+
+```typescript
+describe('Network status monitoring', () => {
+  test('should track network status changes', async () => {
+    const synckit = new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://localhost:8080',
+      clientId: 'test-client'
+    })
+    await synckit.init()
+
+    const statuses: NetworkStatus[] = []
+
+    const unsubscribe = synckit.onNetworkStatusChange?.((status) => {
+      statuses.push(status)
+      console.log('Network status:', {
+        connectionState: status.connectionState,
+        queueSize: status.queueSize,
+        failedOperations: status.failedOperations
+      })
+    })
+
+    // Make some operations
+    const todo = synckit.document<Todo>('todo-1')
+    await todo.init()
+    await todo.update({ text: 'Test', completed: false })
+
+    // Wait for status updates
+    await new Promise(r => setTimeout(r, 1000))
+
+    // Should have received status updates
+    expect(statuses.length).toBeGreaterThan(0)
+
+    unsubscribe?.()
+  })
+
+  test('should monitor document sync state', async () => {
+    const synckit = new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://localhost:8080',
+      clientId: 'test-client'
+    })
+    await synckit.init()
+
+    const todo = synckit.document<Todo>('todo-1')
+    await todo.init()
+
+    const syncStates: DocumentSyncState[] = []
+
+    const unsubscribe = synckit.onSyncStateChange?.('todo-1', (state) => {
+      syncStates.push(state)
+      console.log('Sync state:', state.state)
+    })
+
+    // Make changes
+    await todo.update({ text: 'Test', completed: false })
+
+    // Wait for sync state changes
+    await new Promise(r => setTimeout(r, 1000))
+
+    // Should have received sync state updates
+    expect(syncStates.length).toBeGreaterThan(0)
+
+    unsubscribe?.()
   })
 })
 ```
 
-### Network Throttling
+### Network Throttling with Playwright
 
 ```typescript
 import { chromium } from 'playwright'
@@ -584,79 +730,82 @@ test('should handle 10% packet loss', async () => {
 
 ## Chaos Engineering
 
-**⚠️ IMPORTANT - v0.1.0 STATUS:**
+### Random Failure Injection
 
-Chaos engineering examples below use network sync features **NOT YET IMPLEMENTED in v0.1.0**. These patterns will be applicable when network sync is released.
-
-**Current v0.1.0:** Focus on testing local IndexedDB operations, conflict resolution with manual merges, and CRDT properties.
-
-### Random Failure Injection (Planned Feature)
+Test system resilience with random failures:
 
 ```typescript
 describe('Chaos engineering', () => {
-  test('should survive random disconnections', async () => {
-    const sync = new SyncKit({ serverUrl: 'ws://localhost:8080' })
-    const todo = sync.document<Todo>('todo-1')
+  test('should handle random network conditions', async () => {
+    const synckit = new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://localhost:8080',
+      clientId: 'chaos-test'
+    })
+    await synckit.init()
 
-    // Randomly disconnect/reconnect during operations
-    const chaosMonkey = setInterval(() => {
-      if (Math.random() < 0.3) {
-        sync.disconnect()
-        setTimeout(() => sync.reconnect(), Math.random() * 1000)
-      }
-    }, 500)
+    const todo = synckit.document<Todo>('todo-1')
+    await todo.init()
 
-    // Perform 100 operations
+    // Track all states
+    const states: Todo[] = []
+    todo.subscribe(data => states.push(data))
+
+    // Perform 100 operations with random delays
     for (let i = 0; i < 100; i++) {
       await todo.update({ counter: i })
-      await new Promise(r => setTimeout(r, 50))
+      // Random delay to simulate jitter
+      await new Promise(r => setTimeout(r, Math.random() * 50))
     }
 
-    clearInterval(chaosMonkey)
-
-    // Reconnect and wait for stabilization
-    await sync.reconnect()
-    await waitForQueueEmpty(sync)
+    // Wait for stabilization
+    await new Promise(r => setTimeout(r, 2000))
 
     // PROPERTY: Final state should be consistent
-    const data = todo.get()
-    expect(data.counter).toBe(99)
+    const finalState = todo.get()
+    expect(finalState.counter).toBe(99)
   })
 
-  test('should handle network partition', async () => {
-    // Simulate network partition: two groups can't communicate
-    const groupA = [
-      new SyncKit({ serverUrl: 'ws://server-a:8080' }),
-      new SyncKit({ serverUrl: 'ws://server-a:8080' })
+  test('should handle concurrent updates from multiple clients', async () => {
+    // Create 3 clients
+    const clients = [
+      new SyncKit({
+        storage: 'memory',
+        serverUrl: 'ws://localhost:8080',
+        clientId: 'client-0'
+      }),
+      new SyncKit({
+        storage: 'memory',
+        serverUrl: 'ws://localhost:8080',
+        clientId: 'client-1'
+      }),
+      new SyncKit({
+        storage: 'memory',
+        serverUrl: 'ws://localhost:8080',
+        clientId: 'client-2'
+      })
     ]
 
-    const groupB = [
-      new SyncKit({ serverUrl: 'ws://server-b:8080' }),
-      new SyncKit({ serverUrl: 'ws://server-b:8080' })
-    ]
+    await Promise.all(clients.map(c => c.init()))
 
-    const docsA = groupA.map(s => s.document<Todo>('todo-1'))
-    const docsB = groupB.map(s => s.document<Todo>('todo-1'))
+    const docs = clients.map(c => c.document<Todo>('todo-1'))
+    await Promise.all(docs.map(d => d.init()))
 
-    // Both groups make conflicting changes
-    await docsA[0].update({ text: 'Group A' })
-    await docsB[0].update({ text: 'Group B' })
+    // Each client makes rapid updates
+    await Promise.all(
+      docs.map(async (doc, i) => {
+        for (let j = 0; j < 50; j++) {
+          await doc.update({ [`client${i}_counter`]: j })
+          await new Promise(r => setTimeout(r, Math.random() * 20))
+        }
+      })
+    )
 
-    // Groups internally consistent
-    await syncAllClients(docsA)
-    await syncAllClients(docsB)
+    // Wait for sync
+    await new Promise(r => setTimeout(r, 3000))
 
-    // Heal partition
-    await healPartition()
-
-    // Sync everyone
-    await syncAllClients([...docsA, ...docsB])
-
-    // PROPERTY: All clients converge to same state
-    const states = await Promise.all([
-      ...docsA.map(d => d.get()),
-      ...docsB.map(d => d.get())
-    ])
+    // PROPERTY: All clients should converge
+    const states = docs.map(d => d.get())
 
     for (let i = 1; i < states.length; i++) {
       expect(states[i]).toEqual(states[0])
@@ -665,15 +814,78 @@ describe('Chaos engineering', () => {
 })
 ```
 
+### Network Partition Testing
+
+Test behavior during network partitions:
+
+```typescript
+test('should handle network partition and healing', async () => {
+  // Simulate network partition: two groups can't communicate initially
+  const groupA = [
+    new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://server-a:8080',
+      clientId: 'a1'
+    }),
+    new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://server-a:8080',
+      clientId: 'a2'
+    })
+  ]
+
+  const groupB = [
+    new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://server-b:8080',
+      clientId: 'b1'
+    }),
+    new SyncKit({
+      storage: 'memory',
+      serverUrl: 'ws://server-b:8080',
+      clientId: 'b2'
+    })
+  ]
+
+  await Promise.all([...groupA, ...groupB].map(s => s.init()))
+
+  const docsA = groupA.map(s => s.document<Todo>('todo-1'))
+  const docsB = groupB.map(s => s.document<Todo>('todo-1'))
+  await Promise.all([...docsA, ...docsB].map(d => d.init()))
+
+  // Both groups make conflicting changes
+  await docsA[0].update({ text: 'Group A', priority: 'high' })
+  await docsB[0].update({ text: 'Group B', completed: true })
+
+  // Manually sync within groups (simulating partition)
+  await docsA[0].merge(docsA[1])
+  await docsA[1].merge(docsA[0])
+  await docsB[0].merge(docsB[1])
+  await docsB[1].merge(docsB[0])
+
+  // Heal partition - merge across groups
+  for (const docA of docsA) {
+    for (const docB of docsB) {
+      await docA.merge(docB)
+      await docB.merge(docA)
+    }
+  }
+
+  // PROPERTY: All clients converge to same state after healing
+  const allDocs = [...docsA, ...docsB]
+  const states = allDocs.map(d => d.get())
+
+  for (let i = 1; i < states.length; i++) {
+    expect(states[i]).toEqual(states[0])
+  }
+})
+```
+
 ---
 
 ## Multi-Client E2E Testing
 
-**⚠️ IMPORTANT - v0.1.0 STATUS:**
-
-Multi-client E2E tests shown below demonstrate **future network sync functionality**. In v0.1.0, you can test multi-client scenarios by manually syncing documents using the `merge()` API.
-
-### Using Playwright for Multi-Client Tests (Future Feature)
+### Using Playwright for Multi-Client Tests
 
 ```typescript
 import { test, chromium } from '@playwright/test'
@@ -699,22 +911,22 @@ test('should sync between multiple clients', async () => {
   await clients[0].click('[data-testid="save"]')
 
   // Client 2 & 3: Should see the todo appear
-  await clients[1].waitForSelector('text=Buy milk')
-  await clients[2].waitForSelector('text=Buy milk')
+  await clients[1].waitForSelector('text=Buy milk', { timeout: 5000 })
+  await clients[2].waitForSelector('text=Buy milk', { timeout: 5000 })
 
   // Client 2: Mark as completed
   await clients[1].click('[data-testid="todo-checkbox"]')
 
   // Client 1 & 3: Should see completion
-  await clients[0].waitForSelector('[data-testid="todo-completed"]')
-  await clients[2].waitForSelector('[data-testid="todo-completed"]')
+  await clients[0].waitForSelector('[data-testid="todo-completed"]', { timeout: 5000 })
+  await clients[2].waitForSelector('[data-testid="todo-completed"]', { timeout: 5000 })
 
   // Client 3: Delete todo
   await clients[2].click('[data-testid="delete-todo"]')
 
   // Client 1 & 2: Todo should disappear
-  await clients[0].waitForSelector('text=Buy milk', { state: 'detached' })
-  await clients[1].waitForSelector('text=Buy milk', { state: 'detached' })
+  await clients[0].waitForSelector('text=Buy milk', { state: 'detached', timeout: 5000 })
+  await clients[1].waitForSelector('text=Buy milk', { state: 'detached', timeout: 5000 })
 
   await browser.close()
 })
@@ -762,14 +974,14 @@ test('should handle concurrent edits gracefully', async () => {
 ### Load Testing with Multiple Clients
 
 ```typescript
-import { chromium } from 'playwright'
+import { chromium, Page } from 'playwright'
 
-test('should handle 100 concurrent clients', async () => {
+test('should handle 50 concurrent clients', async () => {
   const browser = await chromium.launch()
   const clients: Page[] = []
 
-  // Spawn 100 clients
-  for (let i = 0; i < 100; i++) {
+  // Spawn 50 clients
+  for (let i = 0; i < 50; i++) {
     const page = await browser.newPage()
     await page.goto('http://localhost:3000')
     clients.push(page)
@@ -779,7 +991,11 @@ test('should handle 100 concurrent clients', async () => {
   await Promise.all(
     clients.map((page, i) =>
       page.evaluate(async (index) => {
-        await sync.document(`todo-${index}`).update({
+        // Assuming synckit is exposed globally or via window
+        const synckit = (window as any).synckit
+        const doc = synckit.document(`todo-${index}`)
+        await doc.init()
+        await doc.update({
           id: `todo-${index}`,
           text: `Todo ${index}`,
           completed: false
@@ -788,10 +1004,10 @@ test('should handle 100 concurrent clients', async () => {
     )
   )
 
-  // Verify all clients see all 100 todos
-  for (const client of clients) {
+  // Verify all clients eventually see all todos
+  for (const client of clients.slice(0, 5)) {  // Check first 5 clients
     await client.waitForFunction(() => {
-      return document.querySelectorAll('[data-testid^="todo-"]').length === 100
+      return document.querySelectorAll('[data-testid^="todo-"]').length >= 50
     }, { timeout: 30000 })
   }
 
@@ -803,9 +1019,14 @@ test('should handle 100 concurrent clients', async () => {
 
 ```typescript
 test('should handle rapid updates', async () => {
-  const sync = new SyncKit({ storage: 'memory', name: 'stress-test' })
-  await sync.init()
-  const todo = sync.document<Todo>('todo-1')
+  const synckit = new SyncKit({
+    storage: 'memory',
+    name: 'stress-test',
+    clientId: 'stress-test'
+  })
+  await synckit.init()
+
+  const todo = synckit.document<Todo>('todo-1')
   await todo.init()
 
   await todo.update({
@@ -827,7 +1048,11 @@ test('should handle rapid updates', async () => {
   console.log(`10,000 updates in ${duration.toFixed(2)}ms`)
   console.log(`${(10000 / duration * 1000).toFixed(0)} ops/sec`)
 
-  // Should complete in <10 seconds
+  // Verify final state
+  const data = todo.get()
+  expect(data.counter).toBe(9999)
+
+  // Should complete in reasonable time
   expect(duration).toBeLessThan(10000)
 })
 ```
@@ -840,7 +1065,8 @@ test('should handle rapid updates', async () => {
 
 ```typescript
 import { render, screen, waitFor } from '@testing-library/react'
-import { useSyncDocument } from '@synckit/sdk/react'
+import { useSyncDocument } from '@synckit/sdk'
+import userEvent from '@testing-library/user-event'
 
 test('should sync state to React component', async () => {
   function TodoComponent() {
@@ -859,7 +1085,14 @@ test('should sync state to React component', async () => {
   }
 
   // Initial setup
-  const doc = sync.document<Todo>('todo-1')
+  const synckit = new SyncKit({
+    storage: 'memory',
+    name: 'test',
+    clientId: 'test'
+  })
+  await synckit.init()
+
+  const doc = synckit.document<Todo>('todo-1')
   await doc.init()
   await doc.update({
     id: 'todo-1',
@@ -877,8 +1110,48 @@ test('should sync state to React component', async () => {
   // Click toggle button
   await userEvent.click(screen.getByText('Toggle'))
 
-  // Update should propagate (no need to manually check)
-  // React hook handles re-rendering automatically
+  // Update should propagate
+  await waitFor(() => {
+    const data = doc.get()
+    expect(data.completed).toBe(true)
+  })
+})
+```
+
+### Testing with Network Status Hooks
+
+```typescript
+import { useNetworkStatus, useSyncState } from '@synckit/sdk'
+
+test('should track network status in React', async () => {
+  function NetworkMonitor() {
+    const status = useNetworkStatus()
+    const syncState = useSyncState('todo-1')
+
+    if (!status) return <div>Offline mode</div>
+
+    return (
+      <div>
+        <div data-testid="connection">{status.connectionState}</div>
+        <div data-testid="queue">{status.queueSize}</div>
+        <div data-testid="sync-state">{syncState?.state || 'unknown'}</div>
+      </div>
+    )
+  }
+
+  const synckit = new SyncKit({
+    storage: 'memory',
+    serverUrl: 'ws://localhost:8080',
+    clientId: 'test'
+  })
+  await synckit.init()
+
+  render(<NetworkMonitor />)
+
+  // Should display network status
+  await waitFor(() => {
+    expect(screen.getByTestId('connection')).toBeInTheDocument()
+  })
 })
 ```
 
@@ -899,44 +1172,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
-      - run: bun test
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install
+      - run: npm test
 
   integration-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
+      - uses: actions/setup-node@v3
+      - run: npm install
       - name: Start server
-        run: bun run server &
+        run: npm run server &
       - name: Wait for server
         run: npx wait-on http://localhost:8080
-      - run: bun test:integration
+      - run: npm run test:integration
 
   e2e-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
+      - uses: actions/setup-node@v3
+      - run: npm install
       - name: Install Playwright
-        run: bunx playwright install --with-deps
+        run: npx playwright install --with-deps
       - name: Start app
-        run: bun run dev &
+        run: npm run dev &
       - name: Wait for app
         run: npx wait-on http://localhost:3000
-      - run: bun test:e2e
+      - run: npm run test:e2e
 
   property-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
+      - uses: actions/setup-node@v3
+      - run: npm install
       - name: Run property-based tests
-        run: bun test:property
+        run: npm run test:property
         env:
           FAST_CHECK_NUM_RUNS: 1000
 ```
@@ -945,63 +1220,95 @@ jobs:
 
 ## Debugging and Troubleshooting
 
-### Debug Logging - Planned Feature
-
-**⚠️ NOT YET IMPLEMENTED IN v0.1.0**
-
-```typescript
-// ⚠️ logLevel option doesn't exist in v0.1.0
-const sync = new SyncKit({
-  serverUrl: 'ws://localhost:8080',
-  logLevel: 'debug'  // Not functional
-})
-
-// Logs all operations:
-// [DEBUG] document.update: todo-1 { completed: true }
-// [DEBUG] sync.send: delta { ... }
-// [DEBUG] sync.receive: ack { ... }
-```
-
-**Current v0.1.0:** Use console.log for manual debugging:
-```typescript
-const todo = sync.document<Todo>('todo-1')
-await todo.init()
-console.log('Before update:', todo.get())
-await todo.update({ completed: true })
-console.log('After update:', todo.get())
-```
-
 ### Inspecting State
 
 ```typescript
 // Get current document state
 const state = todo.get()
-console.log('Current state:', state)
+console.log('Current state:', JSON.stringify(state, null, 2))
 
 // List all documents
-const docIds = await sync.listDocuments()
+const docIds = await synckit.listDocuments()
 console.log('All documents:', docIds)
 
 // Get client ID
-const clientId = sync.getClientId()
+const clientId = synckit.getClientId()
 console.log('Client ID:', clientId)
+
+// Check if initialized
+console.log('Initialized:', synckit.isInitialized())
 ```
 
-**Note:** Methods like `getMetadata()` and `exists()` are not available in v0.1.0. Use `listDocuments()` to check if a document exists.
+### Network Status Debugging
+
+```typescript
+// Get network status
+const status = synckit.getNetworkStatus()
+if (status) {
+  console.log('Network Status:', {
+    networkState: status.networkState,
+    connectionState: status.connectionState,
+    queueSize: status.queueSize,
+    failedOperations: status.failedOperations,
+    oldestOperation: status.oldestOperation
+      ? new Date(status.oldestOperation).toISOString()
+      : null
+  })
+} else {
+  console.log('Network layer not initialized (offline-only mode)')
+}
+
+// Get sync state for a document
+const syncState = synckit.getSyncState('todo-1')
+if (syncState) {
+  console.log('Sync State:', {
+    state: syncState.state,
+    pendingOperations: syncState.pendingOperations,
+    lastSyncedAt: syncState.lastSyncedAt
+      ? new Date(syncState.lastSyncedAt).toISOString()
+      : null,
+    error: syncState.error
+  })
+}
+```
+
+### Manual Logging for Debugging
+
+Since `logLevel` is not available in v0.1.0, use manual logging:
+
+```typescript
+const todo = synckit.document<Todo>('todo-1')
+await todo.init()
+
+console.log('Before update:', todo.get())
+
+await todo.update({ completed: true })
+
+console.log('After update:', todo.get())
+
+// Monitor all changes
+const unsubscribe = todo.subscribe((data) => {
+  console.log('Document changed:', data)
+})
+```
 
 ### Common Test Failures
 
 **"Test is flaky"**
 - **Cause:** Not waiting for async operations
-- **Fix:** Use `await` consistently, add proper waits
+- **Fix:** Use `await` consistently, add proper waits for network operations
 
 **"Convergence test fails"**
 - **Cause:** Clients not fully synced
-- **Fix:** Wait for queue to empty before asserting
+- **Fix:** Use `waitForSync()` or `waitForQueueEmpty()` helpers before asserting
 
 **"Timeout in E2E test"**
 - **Cause:** Network delays, server not ready
-- **Fix:** Increase timeout, use `waitFor` patterns
+- **Fix:** Increase timeout, use `waitFor` patterns, check server is running
+
+**"Network status is null"**
+- **Cause:** No `serverUrl` provided
+- **Fix:** Ensure `serverUrl` is configured when testing network features
 
 ---
 
@@ -1009,27 +1316,37 @@ console.log('Client ID:', clientId)
 
 **Key Testing Strategies:**
 
-1. **Unit tests** - Test CRDT operations in isolation
+1. **Unit tests** - Test CRDT operations in isolation (merge, update, conflict resolution)
 2. **Property-based tests** - Verify CRDT properties (convergence, commutativity, idempotence)
-3. **Network tests** - Simulate offline, slow networks, packet loss
-4. **Chaos tests** - Inject random failures, network partitions
-5. **Multi-client E2E** - Test real-world collaboration scenarios
+3. **Network tests** - Test sync with server, queue behavior, network status monitoring
+4. **Chaos tests** - Inject random failures, test partition healing
+5. **Multi-client E2E** - Test real-world collaboration scenarios with Playwright
 6. **Performance tests** - Verify scalability and load handling
 
 **Essential Test Checklist:**
 
-- ✅ Convergence: All clients reach same state
-- ✅ Offline: Operations work without network
-- ✅ Conflicts: LWW resolves correctly
-- ✅ Multi-client: Real-time sync works
+- ✅ Convergence: All clients reach same state after merge
+- ✅ Offline: Operations work without network (local storage)
+- ✅ Network sync: Changes sync to server when connected
+- ✅ Conflicts: LWW resolves correctly based on timestamps
+- ✅ Multi-client: Real-time sync works with multiple clients
 - ✅ Performance: Meets latency/throughput targets
-- ✅ Edge cases: Network failures, rapid edits, partitions
+- ✅ Edge cases: Network failures, rapid edits, concurrent updates
+
+**Testing Network Features:**
+
+- ✅ Use `getNetworkStatus()` to check queue size and connection state
+- ✅ Use `onNetworkStatusChange()` to monitor network changes
+- ✅ Use `getSyncState()` to track document sync state
+- ✅ Use `onSyncStateChange()` to monitor sync progress
+- ✅ Use helper functions like `waitForSync()` and `waitForQueueEmpty()`
 
 **Next Steps:**
 
 - Set up [CI/CD](#cicd-integration) for continuous testing
 - Implement [property-based tests](#property-based-testing-for-crdts) for critical paths
 - Add [chaos testing](#chaos-engineering) to catch edge cases
+- Test with multiple clients using [Playwright](#multi-client-e2e-testing)
 
 ---
 
