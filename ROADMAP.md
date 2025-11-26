@@ -912,7 +912,7 @@ docs/COMPARISON.md                 # vs Automerge/Yjs/RxDB
 ### Performance Targets
 - ✅ Local operation latency: <1ms
 - ✅ Remote sync latency: <100ms (p95)
-- ✅ Bundle size: 49KB gzipped (default), 44KB gzipped (lite)
+- ✅ Bundle size: 59KB gzipped (default), 45KB gzipped (lite)
 - ✅ Memory usage: <10MB for 10K documents
 - ✅ Concurrent connections: 1000+ per server
 

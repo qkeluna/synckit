@@ -48,7 +48,7 @@ This release brings SyncKit from concept to production-ready sync engine with co
 - **Network Monitoring** - Connection state, queue status, and sync state tracking
 - **React Integration** - `useSyncDocument`, `useSyncField`, `useSyncDocumentList`, `useNetworkStatus`, `useSyncState`, `useSyncKit` hooks
 - **TypeScript Support** - Full type safety with generics and strict mode
-- **Two Optimized Variants** - Default (~58KB total) and Lite (~45KB total) gzipped
+- **Two Optimized Variants** - Default (~59KB total) and Lite (~45KB total) gzipped
 
 **Note:** v0.1.0 includes full network sync capabilities with WebSocket server, offline queue, and auto-reconnection. Text CRDT and custom CRDTs (Counter, Set) are available in the Rust core but not yet exposed in the TypeScript SDK - coming in future releases.
 
