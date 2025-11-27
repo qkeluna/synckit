@@ -985,33 +985,6 @@ Week 6: Launch
 ```
 
 ---
-
-## 🚨 Risk Mitigation
-
-### Technical Risks
-1. **WASM bundle size exceeds 20KB**
-   - Mitigation: Profile early (Phase 5), optimize aggressively
-   - Fallback: Pure TypeScript implementation for simple use cases
-
-2. **Performance doesn't meet targets**
-   - Mitigation: Benchmark continuously (each phase)
-   - Fallback: Rust native library for Node.js/Tauri
-
-3. **TLA+ reveals unfixable algorithm issues**
-   - Mitigation: Verify early (Phase 1), pivot algorithm if needed
-   - Fallback: Well-studied algorithms (Yjs YATA, Automerge)
-
-### Execution Risks
-1. **Timeline slips beyond 6 weeks**
-   - Mitigation: Daily progress tracking
-   - Fallback: Ship Tier 1 only (LWW), add Tier 2/3 in v0.2.0
-
-2. **Multi-language servers too ambitious**
-   - Mitigation: TypeScript-only for v0.1.0
-   - Fallback: Protocol spec enables community implementations
-
----
-
 ## ✅ Definition of Done (Per Phase)
 
 Each phase is complete when:
