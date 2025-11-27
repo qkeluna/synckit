@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { SyncKit } from '@synckit/sdk'
+import type { SyncKit } from '@synckit-js/sdk'
 import type { Task, TaskPriority, TaskStatus } from '../types'
 import { useStore } from '../store'
 import { Button } from './ui/button'

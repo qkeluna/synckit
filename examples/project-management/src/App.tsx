@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 // Default variant (49 KB) - full-featured, perfect for production apps
-import { SyncKit } from '@synckit/sdk'
-import { SyncProvider } from '@synckit/sdk/react'
+import { SyncKit } from '@synckit-js/sdk'
+import { SyncProvider } from '@synckit-js/sdk/react'
 import { useStore } from './store'
 import type { Task } from './types'
 import Header from './components/Header'

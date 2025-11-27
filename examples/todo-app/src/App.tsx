@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { SyncKit, SyncProvider } from '@synckit/sdk'
+import { SyncKit, SyncProvider } from '@synckit-js/sdk'
 import TodoApp from './components/TodoApp'
 import TestButton from './components/TestButton'
 

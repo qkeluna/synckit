@@ -1,5 +1,5 @@
 {
-  "name": "@synckit/example-todo-app",
+  "name": "@synckit-js/example-todo-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@synckit/sdk": "file:../../sdk",
+    "@synckit-js/sdk": "file:../../sdk",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

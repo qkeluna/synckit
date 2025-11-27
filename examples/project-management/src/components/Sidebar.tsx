@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
-import type { SyncKit } from '@synckit/sdk'
+import type { SyncKit } from '@synckit-js/sdk'
 import type { Project } from '../types'
 import { Button } from './ui/button'
 import { Input } from './ui/input'

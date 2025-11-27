@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useSyncDocument } from '@synckit/sdk'
+import { useSyncDocument } from '@synckit-js/sdk'
 import type { TodoListDocument, Todo } from '../types'
 import TodoItem from './TodoItem'
 import './TodoApp.css'

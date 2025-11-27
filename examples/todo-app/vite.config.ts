@@ -17,7 +17,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['@synckit/sdk'],
+    exclude: ['@synckit-js/sdk'],
   },
   build: {
     target: 'esnext',

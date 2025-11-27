@@ -10,7 +10,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { SyncKit } from '@synckit/sdk'
+import type { SyncKit } from '@synckit-js/sdk'
 import type { Task, TaskStatus } from '../types'
 import { useStore } from '../store'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'

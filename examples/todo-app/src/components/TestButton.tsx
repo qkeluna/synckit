@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSyncKit } from '@synckit/sdk'
+import { useSyncKit } from '@synckit-js/sdk'
 
 export default function TestButton() {
   const [result, setResult] = useState<string>('')

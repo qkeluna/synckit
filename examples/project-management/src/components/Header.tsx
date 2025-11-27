@@ -1,5 +1,5 @@
 import { useStore } from '../store'
-import { useNetworkStatus } from '@synckit/sdk/react'
+import { useNetworkStatus } from '@synckit-js/sdk/react'
 import { Button } from './ui/button'
 import { Menu, Plus } from 'lucide-react'
 

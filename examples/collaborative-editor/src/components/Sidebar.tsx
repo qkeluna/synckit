@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
-import type { SyncKit } from '@synckit/sdk'
+import type { SyncKit } from '@synckit-js/sdk'
 import type { DocumentMetadata } from '../types'
 
 interface SidebarProps {

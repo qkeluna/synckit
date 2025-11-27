@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 // Default variant (45 KB ESM) - includes network sync + offline queue
-import { SyncKit } from '@synckit/sdk'
-import { SyncProvider } from '@synckit/sdk/react'
+import { SyncKit } from '@synckit-js/sdk'
+import { SyncProvider } from '@synckit-js/sdk/react'
 import { useStore } from './store'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'

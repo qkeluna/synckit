@@ -18,7 +18,7 @@
     "@codemirror/language": "^6.9.3",
     "@codemirror/state": "^6.3.3",
     "@codemirror/view": "^6.22.1",
-    "@synckit/sdk": "*",
+    "@synckit-js/sdk": "*",
     "codemirror": "^6.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
